@@ -422,6 +422,13 @@
   .drill-item:hover{border-color:var(--accent)}
   .drill-item.done{background:var(--accent-wash);border-color:#cdeadd;color:var(--accent-ink);text-decoration:line-through;text-decoration-color:#8fd4b3}
   .di-check{font-size:14px;flex:none}
+  .struct-retrieval{padding:14px;display:flex;flex-direction:column;gap:14px}
+  .retr-item{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line-strong);border-radius:10px;padding:11px 12px;background:#fff}
+  .retr-q{font-size:13px;font-weight:800}
+  .retr-answer{font-size:12.5px;color:var(--accent-ink);background:var(--accent-wash);border-radius:8px;padding:7px 10px}
+  .retr-rate{display:flex;gap:6px}
+  .retr-rate-btn.on-know{border-color:var(--accent);background:var(--accent-wash);color:var(--accent-ink)}
+  .retr-rate-btn.on-confused{border-color:var(--amber);background:var(--amber-wash);color:var(--amber-ink)}
   .struct-checklist{padding:14px;display:flex;flex-direction:column;gap:8px}
   .ck-row{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line-strong);border-radius:10px;padding:9px 12px}
   .ck-q{font-size:13px;flex:1}
@@ -1016,20 +1023,26 @@ const MODEL = "solar-pro";
 
 const PICS = ['🍎','🍌','🍇','🍓','🍉','🥕','🐶','🐱','🐰','🦁','🐼','🐢','🚀','🚗','⚽','🎈','📚','🎸','🌈','⭐','🍕','🎨','🔑','🧭'];
 /* 공부 방법(인지 전략)은 Weinstein & Mayer(1983)·Pintrich et al.(1993)이 제시한 5대 유형
-   (시연·정교화·조직화·비판적 사고·이해 점검)을 그대로 따른다(원리8 이론적 근거).
+   (시연·정교화·조직화·비판적 사고·이해 점검)을 뼈대로 따른다(원리8 이론적 근거).
    여러 개를 함께 고를 수 있고(원리2: 무엇을 얼마나 쓸지는 학습자가 정함), 각 방법마다
    대화 중 유도할 동사(verb), 하위 실행 팁(tips), 줄글로 담기 힘든 결과를 실제 어포던스로
    뽑아내는 구조화 산출물(structs)을 서로 다르게 정의해 방법별로 확실히 구별되게 한다. */
+// 요청사항(14번째 피드백): 첫 번째 카드(시연/Rehearsal)가 실제로는 "AI가 불러주는 걸 학습자가
+// 그대로 받아 적는" 것처럼 보인다는 지적 — 기존 구현(외울 낱말을 보면서 체크만 하는 drill)이
+// 시연의 핵심인 "능동적으로 기억에서 꺼내보기"를 담지 못하고 있었다. 같은 자리를, 더 검증된
+// 인출연습(Retrieval Practice — Roediger & Karpicke 등)으로 재정의한다: 안 보고 스스로 떠올려
+// 쓰기 → 정답과 바로 비교(즉시 피드백) → 헷갈린 것만 간격을 두고 다시 물어봄(아래 STRUCT_SCHEMAS.
+// retrieval, maybeInsertRetrievalRecall 참고 — 이해도 체크포인트의 간격 산정 방식(원리9)을 그대로 재사용).
 // 요청사항(12번째 피드백) 4·5: "인지전략 별로 어떤 메타인지지식·교과내용지식 수준일 때
 // 추천하는지 정보가 있어야 한다" — 지금까지는 딱 하나(제일 낮은 점수)만 골라 한 문장으로
 // 알려줬는데, 그마저도 와닿지 않는다는 지적. 전략 5개 각각에 "이럴 때 특히 도움돼요"를
 // 미리 써 두고, 카드마다 보여준다(원리8-②③).
 const STRATS = [
-  { id:'rehearsal',   emoji:'🔁', label:'반복 연습하기', theory:'시연(Rehearsal)', desc:'중요한 낱말·순서를 소리 내어 되풀이해서 익혀요',
-    recommendWhen:'내용 자체가 아직 낯설고, 낱말이나 순서부터 외워야 할 때',
-    verb:'핵심 낱말이나 순서를 소리 내어 여러 번 되풀이해 외워보도록',
-    tips:['중요한 낱말을 3번 소리 내어 말해보기','순서를 정해서 외워보기','다 외운 뒤 안 보고 말해보기'],
-    structs:[{ type:'drill', label:'🔁 외울 목록 체크하며 반복하기' }] },
+  { id:'rehearsal',   emoji:'🧠', label:'인출 연습하기', theory:'인출연습(Retrieval Practice)', desc:'안 보고 스스로 떠올려보고, 바로 확인하고 조금 있다가 또 확인해요',
+    recommendWhen:'한 번 배운 내용이 머릿속에 잘 남아있는지 스스로 확인해보고 싶을 때',
+    verb:'방금 나눈 이야기를 안 보고 스스로 떠올려보게 한 뒤, 맞았는지 바로 확인해주고 조금 있다가 다시 물어보도록',
+    tips:['채팅을 보지 않고 먼저 답을 떠올려보기','바로 정답과 비교해보기','헷갈렸던 건 나중에 다시 답해보기'],
+    structs:[{ type:'retrieval', label:'🧠 인출 질문에 답하기' }] },
   { id:'elaboration', emoji:'💡', label:'예시로 연결하기', theory:'정교화(Elaboration)', desc:'내가 아는 것·경험과 새 예를 들어 연결해요',
     recommendWhen:'내용은 어느 정도 알겠는데, 다른 것과 연결 짓는 게 아직 어려울 때',
     verb:'새로 배운 것을 이미 아는 경험이나 예시와 스스로 연결해보도록',
@@ -1177,8 +1190,16 @@ const STRUCT_SCHEMAS = {
              } },
   chain:   { shape:'{"type":"chain","bank":["사건 후보1","사건 후보2","사건 후보3","사건 후보4"]}',
              ask:s=>`"${s.ctx.std}"에서 다룬 원인·결과(또는 순서가 있는 사건들)를 지금까지 나눈 이야기에 근거해 순서를 뒤섞은 후보(bank) 4~5개로만 뽑아줘. 어떤 순서인지는 절대 암시하지 마 — 순서를 정하는 건 학습자 몫이다.` },
+  // 기존에 저장된 예전 세션(시연/반복 체크리스트)을 여전히 열어볼 수 있도록 스키마는 남겨두되,
+  // STRATS에서는 더 이상 이 type을 새로 내주지 않는다(아래 retrieval로 대체).
   drill:   { shape:'{"type":"drill","items":["…","…","…"]}',
              ask:s=>`지금까지 나눈 이야기에서, "${s.ctx.std}"를 위해 소리 내어 반복해서 외우면 좋을 핵심 낱말이나 짧은 문장을 3~5개 뽑아줘.` },
+  // 인출연습(Retrieval Practice): 다른 스키마(table·mindmap·compare·chain)와 달리, 여기서는
+  // AI가 정답(a)까지 함께 준다 — 이건 학습자의 새 결과물을 대신 만들어주는 게 아니라, 이미 나눈
+  // 대화 내용을 "기억에서 잘 꺼내지는지" 확인하기 위한 채점 기준이기 때문이다(원리8).
+  // 학습자는 먼저 안 보고 스스로 떠올려 쓴 뒤에야 정답을 보게 된다(renderStructHTML 참고).
+  retrieval:{ shape:'{"type":"retrieval","items":[{"q":"질문1","a":"핵심 정답1"},{"q":"질문2","a":"핵심 정답2"}]}',
+             ask:s=>`지금까지 나눈 이야기에서, "${s.ctx.std}"와 관련해 학습자가 안 보고 스스로 떠올려볼 수 있는 짧은 인출 질문(q) 3~4개와, 그 핵심 정답(a, 한 문장 이내로 짧게)을 만들어줘. 질문은 지금까지 대화에서 이미 다룬 내용만 확인해라(아직 안 다룬 새 내용을 시험하지 마라).` },
   checklist:{ shape:'{"type":"checklist","items":["…","…","…"]}',
              ask:s=>`"${s.ctx.std}"와 관련해 학습자가 스스로 아는지 확인해볼 수 있는 짧은 점검 항목(문장 또는 질문)을 3~5개 만들어줘.` }
 };
@@ -1659,7 +1680,7 @@ function closeSessDetail(){ $('#sess-detail-scrim').classList.remove('open'); }
 const SAMPLE_SESSIONS_SPEC = [
   { subject:'국어', std:'고전 문학 작품에서 화자의 태도와 정서 파악하기', strategies:['elaboration','monitoring'], prior:62, meta:{understand:58,strategy:64,connect:55}, post:78, support:'mid', reason:'예시로 채운 이유예요 — 비슷한 경험과 연결하면서 헷갈리는 부분도 같이 확인하고 싶어서.' },
   { subject:'영어', std:'설명문에서 필자의 주장과 근거를 구분해 읽기', strategies:['organization'], prior:55, meta:{understand:60,strategy:50,connect:62}, post:70, support:'high', reason:'예시로 채운 이유예요 — 주장과 근거가 뒤섞여 보여서 표로 정리하고 싶었어요.' },
-  { subject:'수학', std:'이차함수의 그래프와 판별식의 관계 이해하기', strategies:['rehearsal','critical'], prior:48, meta:{understand:45,strategy:52,connect:40}, post:66, support:'high', reason:'예시로 채운 이유예요 — 공식을 아직 못 외워서 반복하고, 제 풀이가 맞는지도 따져보고 싶었어요.' },
+  { subject:'수학', std:'이차함수의 그래프와 판별식의 관계 이해하기', strategies:['rehearsal','critical'], prior:48, meta:{understand:45,strategy:52,connect:40}, post:66, support:'high', reason:'예시로 채운 이유예요 — 공식이 머릿속에 남아있는지 안 보고 확인해보고 싶었고, 제 풀이가 맞는지도 따져보고 싶었어요.' },
   { subject:'사회', std:'인권 확장 과정과 사회 제도 변화 살펴보기', strategies:['critical','organization'], prior:70, meta:{understand:72,strategy:68,connect:75}, post:85, support:'mid', reason:'예시로 채운 이유예요 — 시대별 흐름을 정리하고 다른 관점도 따져보고 싶었어요.' },
   { subject:'과학', std:'화학 반응에서 에너지 출입 이해하기', strategies:['monitoring'], prior:52, meta:{understand:50,strategy:55,connect:48}, post:69, support:'high', reason:'예시로 채운 이유예요 — 아는지 모르는지부터 헷갈려서 스스로 확인해보고 싶었어요.' }
 ];
@@ -1893,6 +1914,9 @@ function startSession(){
     // "설명해봐"(1차 인지 확인)와 구분되도록, 내용이 아니라 "내 이해 상태에 대한 판단·근거"를 묻는다.
     checkpointInterval: 4, checkpointForceSoon:false, lowUnderstandFlag:false,
     checkpoints:[], turnsSinceCheckpoint:0, pendingCheckpoint:false,
+    // 인출연습(원리8): 인출 질문 중 "헷갈렸어요"로 표시한 것만 담아두고, 위 체크포인트와 같은
+    // 간격 방식으로 하나씩 다시 물어본다(maybeInsertRetrievalRecall).
+    retrievalQueue:[], turnsSinceRetrieval:0,
     turns:[],
     reflect:{ note:'', noteA:'', tags:{}, step:'delegate', promptRatings:[] },
     // 원리13: 사전 진단(prior.diagScore)과 같은 채점 기준의 사후 진단(items 4문항, postScore)을
@@ -2220,6 +2244,31 @@ function renderStream(){
         }
         return;
       }
+      // 인출연습(원리8·9): 헷갈렸다고 표시했던 질문을, 몇 턴 지나 간격을 두고(원리9의 이해도
+      // 체크포인트와 같은 간격 방식) 다시 물어본다. 여기서도 "안 보고 먼저 써보기 → 정답 확인"
+      // 순서를 지켜 즉시 피드백을 준다.
+      if(t.kind==='retrieval-recall'){
+        if(t.answered){
+          box.insertAdjacentHTML('beforeend', `<div class="msg note"><div class="meta-score-card">
+            <div class="msc-title">🧠 간격 두고 다시 물어보기 (완료)</div>
+            <div class="msc-note"><b>질문:</b> ${esc(t.q)}</div>
+            <div class="msc-note"><b>내가 쓴 답:</b> ${esc(t.attempt||'(안 씀)')}</div>
+            <div class="msc-note"><b>정답:</b> ${esc(t.a)}</div>
+          </div></div>`);
+        } else {
+          box.insertAdjacentHTML('beforeend', `<div class="msg note"><div class="meta-score-card checkpoint-card">
+            <div class="msc-title">🧠 조금 전에 헷갈렸던 걸 다시 물어볼게요</div>
+            <p class="hint" style="margin:0 0 8px">안 보고 떠올려서 먼저 써 봐요.</p>
+            <div class="msc-note"><b>질문:</b> ${esc(t.q)}</div>
+            <textarea class="textarea rr-attempt" data-rr="${t.id}" rows="2" placeholder="떠올려서 써보세요">${esc(t.attempt||'')}</textarea>
+            ${t.revealed
+              ? `<div class="msc-note" style="margin-top:8px"><b>정답:</b> ${esc(t.a)}</div>
+                 <div style="text-align:right;margin-top:8px"><button type="button" class="btn btn-sm btn-primary rr-done" data-rr="${t.id}">확인했어요</button></div>`
+              : `<div style="text-align:right;margin-top:8px"><button type="button" class="btn btn-sm btn-ghost rr-reveal" data-rr="${t.id}">정답 확인</button></div>`}
+          </div></div>`);
+        }
+        return;
+      }
       if(t.kind==='activate-quiz'){
         const items = session.prior.items||[];
         if(t.answered){
@@ -2343,7 +2392,7 @@ function priorPickHTML(){
 // "정답을 대신 정해주는" 게 아니라 "~일 수도 있으니 참고해봐" 수준의 약한 추천으로만 두고,
 // 이미 앱 곳곳에 있는 패턴(예: suggestStrategyCheck의 대안 제안)과 같은 결의 도움말이다.
 const WEAK_STRAT_HINT = {
-  activate:  { id:'rehearsal',   why:'아직 내용 자체가 낯설 수 있어요' },
+  activate:  { id:'rehearsal',   why:'배운 내용이 아직 잘 떠오르지 않을 수 있어요' },
   understand:{ id:'monitoring',  why:'아직 헷갈리는 부분이 있을 수 있어요' },
   strategy:  { id:'organization',why:'어떤 순서로 풀지 정리해보면 좋을 수 있어요' },
   connect:   { id:'elaboration', why:'다른 것과 연결 짓는 연습이 도움될 수 있어요' }
@@ -2532,6 +2581,12 @@ function describeStruct(s){
     const know = items.filter((_,i)=>st[i]==='know'), confused = items.filter((_,i)=>st[i]==='confused');
     return { label:'아는지 체크리스트', text:`"알아요"로 표시: ${know.join(', ')||'없음'}. "헷갈려요"로 표시: ${confused.join(', ')||'없음'}.` };
   }
+  if(s.type==='retrieval'){
+    const items = p.items||[];
+    const know = items.filter((_,i)=>(st[i]||{}).selfRate==='know').map(it=>it.q);
+    const unsure = items.filter((_,i)=>(st[i]||{}).selfRate==='unsure').map(it=>it.q);
+    return { label:'인출 연습', text:`"맞았어요"로 표시: ${know.join(', ')||'없음'}. "헷갈렸어요"로 표시: ${unsure.join(', ')||'없음'}.` };
+  }
   // 요청사항(5번째 피드백) 6·7: table·compare·chain도 이제 학습자가 직접 채우는 위젯이라,
   // AI 피드백(reviewStruct)이 실제로 학습자가 입력한 내용을 보고 말할 수 있어야 한다.
   if(s.type==='table'){
@@ -2626,6 +2681,21 @@ function renderStructHTML(tid, s){
     const st = s.state || {};
     return `<div class="struct-box" data-tid="${tid}"><div class="struct-head">🔁 소리 내어 반복해서 외워봐요 (다 외웠으면 눌러 체크해요)</div>
       <div class="struct-drill">${p.items.map((it,i)=>`<button type="button" class="drill-item ${st[i]?'done':''}" data-idx="${i}"><span class="di-check">${st[i]?'✅':'⬜'}</span><span>${esc(it)}</span></button>`).join('')}</div>${reviewBtnHTML(tid)}</div>`;
+  }
+  if(s.type==='retrieval' && Array.isArray(p.items)){
+    const st = s.state || {};
+    return `<div class="struct-box" data-tid="${tid}"><div class="struct-head">🧠 안 보고 먼저 떠올려봐요 (쓴 뒤 정답을 확인해요)</div>
+      <div class="struct-retrieval">${p.items.map((it,i)=>{
+        const row = st[i]||{};
+        return `<div class="retr-item">
+          <div class="retr-q">${i+1}. ${esc(it.q)}</div>
+          <textarea class="textarea retr-attempt" data-tid="${tid}" data-idx="${i}" rows="2" placeholder="안 보고 먼저 떠올려서 써보세요">${esc(row.attempt||'')}</textarea>
+          ${row.revealed
+            ? `<div class="retr-answer">✅ 정답: ${esc(it.a)}</div>
+               <div class="retr-rate"><button type="button" class="btn btn-sm retr-rate-btn ${row.selfRate==='know'?'on-know':''}" data-idx="${i}" data-v="know">맞았어요</button><button type="button" class="btn btn-sm retr-rate-btn ${row.selfRate==='unsure'?'on-confused':''}" data-idx="${i}" data-v="unsure">헷갈렸어요</button></div>`
+            : `<button type="button" class="btn btn-sm btn-ghost retr-reveal" data-tid="${tid}" data-idx="${i}">정답 확인</button>`}
+        </div>`;
+      }).join('')}</div>${reviewBtnHTML(tid)}</div>`;
   }
   if(s.type==='checklist' && Array.isArray(p.items)){
     const st = s.state || {};
@@ -3028,6 +3098,7 @@ async function ai(instruction, kind, structOffer){
     const passKind = kind==='prior-pick' ? 'prior-pick' : (kind==='strategy-pick' ? 'strategy-pick' : (kind==='struct-offer' ? 'struct-offer' : null));
     pushAi(capLength(stripTaskDump(stripMetaLeak(stripLeakedParams(stripMarkdown(text))), fallbackTail)), passKind, kind==='struct-offer' ? structOffer : null);
     maybeInsertCheckpoint(kind);
+    maybeInsertRetrievalRecall();
   }catch(err){
     $('#pending')?.remove();
     pushAi('⚠ ' + err.message);
@@ -3061,6 +3132,19 @@ function maybeInsertCheckpoint(kind){
   session.turns.push({ id:uid(), role:'note', kind:'checkpoint', answered:false, score:null, reason:'' });
   renderStream();
   syncComposeLock();
+}
+// 인출연습(원리8 재정의)의 "간격을 두고 다시 물어봄" — 새 타이머를 만들지 않고, 이해도
+// 체크포인트(원리9)와 같은 "몇 턴마다" 간격 방식을 그대로 재사용한다. 헷갈렸다고 표시된
+// 질문이 있을 때만, 3턴 뒤 하나씩 꺼내 되짚어 묻는다(밀리지 않게 큐에서 하나씩만).
+function maybeInsertRetrievalRecall(){
+  if(session.phase!=='explore' || !session.cycleStarted) return;
+  if(!session.retrievalQueue || !session.retrievalQueue.length) return;
+  session.turnsSinceRetrieval = (session.turnsSinceRetrieval||0) + 1;
+  if(session.turnsSinceRetrieval < 3) return;
+  session.turnsSinceRetrieval = 0;
+  const item = session.retrievalQueue.shift();
+  session.turns.push({ id:uid(), role:'note', kind:'retrieval-recall', q:item.q, a:item.a, attempt:'', revealed:false, answered:false });
+  renderStream();
 }
 // 마크다운 문법이 새어 나온 경우를 대비한 방어적 후처리(프롬프트 규칙이 뚫렸을 때의 안전망)
 function stripMarkdown(s){
@@ -3354,7 +3438,7 @@ function sendChat(){
    되짚기
    ============================================================ */
 let cpTrendChart=null;
-const STRUCT_TYPE_LABEL = { table:'📊 표', mindmap:'🕸️ 마인드맵', compare:'⚖️ 비교표', chain:'🔗 순서 사슬', drill:'🔁 반복 연습 체크', checklist:'🎯 아는지 체크리스트' };
+const STRUCT_TYPE_LABEL = { table:'📊 표', mindmap:'🕸️ 마인드맵', compare:'⚖️ 비교표', chain:'🔗 순서 사슬', drill:'🔁 반복 연습 체크', retrieval:'🧠 인출 연습', checklist:'🎯 아는지 체크리스트' };
 // 요청사항(9번째 피드백) 2: 잔여물 확인(혼자 풀어보기)을 되짚기의 세 번째 단계로 명시한다
 // (원리13) — 가·나는 되짚기 화면 안에서, 다는 별도 화면(잔여물 확인)에서 이어지지만 같은
 // 순서 표시 띠를 공유해 "지금 세 단계 중 어디쯤인지"가 화면이 바뀌어도 끊기지 않게 한다.
@@ -3866,6 +3950,53 @@ function init(){
       if(t && t.structured){ t.structured.state = t.structured.state||{}; const idx=+ckb.dataset.idx; t.structured.state[idx] = (t.structured.state[idx]===ckb.dataset.v ? null : ckb.dataset.v); renderStream(); }
       return;
     }
+    // 인출연습(원리8 재정의): 정답 확인은 "즉시 피드백" — 클릭 즉시 화면에서 바로 보여준다.
+    const rReveal = e.target.closest('.retr-reveal');
+    if(rReveal){
+      const box = rReveal.closest('.struct-box'); const t = session.turns.find(x=>x.id===box.dataset.tid);
+      if(t && t.structured){
+        t.structured.state = t.structured.state||{};
+        const idx = +rReveal.dataset.idx;
+        t.structured.state[idx] = Object.assign({}, t.structured.state[idx], { revealed:true });
+        renderStream();
+      }
+      return;
+    }
+    // "헷갈렸어요"로 표시한 질문은 session.retrievalQueue에 담아, 대화가 몇 턴 더 진행된 뒤
+    // maybeInsertRetrievalRecall()이 이해도 체크포인트(원리9)와 같은 간격 방식으로 다시 물어본다.
+    const rRate = e.target.closest('.retr-rate-btn');
+    if(rRate){
+      const box = rRate.closest('.struct-box'); const t = session.turns.find(x=>x.id===box.dataset.tid);
+      if(t && t.structured){
+        t.structured.state = t.structured.state||{};
+        const idx = +rRate.dataset.idx;
+        const cur = t.structured.state[idx] = t.structured.state[idx] || {};
+        const v = rRate.dataset.v;
+        cur.selfRate = (cur.selfRate===v ? null : v);
+        if(cur.selfRate==='unsure'){
+          const it = (t.structured.payload.items||[])[idx];
+          if(it){
+            session.retrievalQueue = session.retrievalQueue || [];
+            if(!session.retrievalQueue.some(q=>q.q===it.q)) session.retrievalQueue.push({ q:it.q, a:it.a });
+          }
+        }
+        renderStream();
+      }
+      return;
+    }
+    // 간격을 두고 다시 물어보는 카드(note, kind:'retrieval-recall') — 정답 확인/완료 버튼.
+    const rrReveal = e.target.closest('.rr-reveal');
+    if(rrReveal){
+      const t = session.turns.find(x=>x.id===rrReveal.dataset.rr);
+      if(t){ t.revealed = true; renderStream(); }
+      return;
+    }
+    const rrDone = e.target.closest('.rr-done');
+    if(rrDone){
+      const t = session.turns.find(x=>x.id===rrDone.dataset.rr);
+      if(t){ t.answered = true; renderStream(); }
+      return;
+    }
     // 요청사항(5번째 피드백) 6: 표·순서 사슬은 이제 학습자가 직접 채운다 — 행 추가, 순서 담기/빼기.
     const addRow = e.target.closest('.tbl-addrow');
     if(addRow){
@@ -4010,6 +4141,23 @@ function init(){
     if(cmpText){
       const t = session.turns.find(x=>x.id===cmpText.dataset.tid);
       if(t && t.structured){ t.structured.payload[cmpText.dataset.side==='left'?'leftText':'rightText'] = cmpText.value; }
+      return;
+    }
+    const retrAttempt = e.target.closest('.retr-attempt');
+    if(retrAttempt){
+      const t = session.turns.find(x=>x.id===retrAttempt.dataset.tid);
+      if(t && t.structured){
+        t.structured.state = t.structured.state||{};
+        const idx = +retrAttempt.dataset.idx;
+        const cur = t.structured.state[idx] = t.structured.state[idx] || {};
+        cur.attempt = retrAttempt.value;
+      }
+      return;
+    }
+    const rrAttempt = e.target.closest('.rr-attempt');
+    if(rrAttempt){
+      const t = session.turns.find(x=>x.id===rrAttempt.dataset.rr);
+      if(t) t.attempt = rrAttempt.value;
       return;
     }
     const aqA = e.target.closest('.aq-a');
