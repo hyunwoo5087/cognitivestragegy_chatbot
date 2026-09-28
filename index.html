@@ -380,6 +380,8 @@
   .u-chip:hover{border-color:var(--accent);background:var(--surface-2)}
   .u-chip.is-selected{border-color:var(--accent);background:var(--accent-wash);color:var(--accent-ink)}
   .u-chip .u-emoji{font-size:19px;flex:none}
+  .prompt-rate-card .understand-pick{flex-direction:row;max-width:420px;gap:6px}
+  .prompt-rate-card .u-chip{width:auto;flex:1;justify-content:center;padding:7px 0}
 
   /* ===== AI 응답 판단하기 (단일 버튼 + 모달) ===== */
   .judge-trigger{border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;color:var(--ink-2);display:inline-flex;align-items:center;gap:6px;transition:.14s}
@@ -407,39 +409,16 @@
   .gp-empty{padding:18px;text-align:center;color:var(--muted);font-size:13px;border:1px dashed var(--line-strong);border-radius:10px;margin-bottom:12px}
   .gp-sub{font-size:13px;margin:16px 0 6px;color:var(--ink-2)}
   @media(max-width:620px){.stat-row-3{grid-template-columns:repeat(3,1fr)} .stat-row-3 .stat-tile .num{font-size:20px}}
-  /* ===== (개선) 쉬운 화면 ===== */
-  .support-mini{font-size:12px;font-weight:700;color:var(--accent-ink);background:var(--accent-wash);border-radius:999px;padding:3px 10px;margin-left:6px;display:none}
-  .tools-btn{display:none;height:30px;font-size:12px;align-self:flex-start}
+  /* ===== 공통 화면 정리 — 설계원리가 정한 요소는 모두 그대로 보이고, 원리와 무관한 보조 도구(수식 기호)만 접어 둔다 ===== */
+  .tools-btn{display:none;height:30px;font-size:12px;align-self:flex-start;margin-right:6px}
+  .tools-btn:not([hidden]){display:inline-flex}
+  #math-symbols{display:none!important}
+  body.tools-open #math-symbols:not([hidden]){display:flex!important}
   #tb-details > summary{display:none}
-  .tb-summary{cursor:pointer;font-weight:800;font-size:14px;padding:12px 14px;border:1px dashed var(--line-strong);border-radius:10px;list-style:none}
-  .tb-summary span{font-weight:500;color:var(--muted);font-size:12.5px}
-  body.easy #tb-details > summary{display:block}
-  body.easy #tb-details[open] > summary{margin-bottom:12px}
-  body.easy #process-bar{display:none!important}
-  body.easy [data-screen="chat"] .rail{display:none}
-  body.easy #scaffold-wrap{display:none}
-  body.easy .support-mini{display:inline-block}
-  body.easy #proc-sub-wrap{display:none!important}
-  body.easy .cycle-title{display:none}
-  body.easy .cycle-wrap{padding-top:8px;padding-bottom:8px}
-  body.easy .goal-strip #gs-std, body.easy .goal-strip #gs-extra-row{display:none}
-  body.easy .goal-strip{flex-direction:row;flex-wrap:wrap;gap:4px 14px;padding:8px 18px}
-  body.easy .msg.ai:not(.is-latest) .judge-trigger:not(.st-accept):not(.st-hold):not(.st-comment), body.easy .msg.ai:not(.is-latest) .explain-btn{display:none}
-  body.easy .task-card .tc-sub, body.easy .task-card .tc-row.err{display:none}
-  body.easy .strat-card .sc-tips, body.easy .strat-card .sc-when{display:none}
-  body.easy [data-pick="strategy"] .msc-row{display:none}
-  body.easy .msc-foot{display:none}
-  body.easy #math-symbols{display:none!important}
-  body.easy.tools-open #math-symbols:not([hidden]){display:flex!important}
-  body.easy .tools-btn:not([hidden]){display:inline-flex}
-  body.easy #quick-actions{display:none!important}
-  body.easy .easy-hide{display:none}
-  body.easy .brand small{display:none}
-  body.easy #timeline .tl-ai{display:none}
-  body.easy .paper .tab .tab-long{display:none}
-  body.easy [data-screen="start"] .rail .subhead, body.easy [data-screen="reflect"] .rail .subhead, body.easy [data-screen="residual"] .rail .subhead{display:none}
-  body.easy .compose > .stuck, body.easy .compose > .tools-btn{margin-right:6px}
-  body.easy #delegate-wrap{font-size:11.5px}
+  .req-tag{display:inline-block;font-size:11px;font-weight:800;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:999px;padding:1px 8px;margin:0 2px;vertical-align:1px}
+  .opt-tag{display:inline-block;font-size:11px;font-weight:700;color:var(--muted);background:var(--surface-2,#f3f4f6);border-radius:999px;padding:1px 8px;margin:0 2px;vertical-align:1px}
+  .starters{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+  .starters button{font-size:12.5px;padding:5px 10px;border-radius:999px;border:1px dashed var(--line-strong);background:var(--surface);cursor:pointer;color:var(--ink-2)}
   /* (사용성) 못 넘어갈 때 이유 안내 */
   .gate-hint{font-size:12.5px;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:6px 10px;margin-top:8px;cursor:pointer}
   .gate-hint:empty{display:none}
@@ -566,7 +545,6 @@
     </div>
     <div class="top-right">
       <span class="who" id="who" hidden></span>
-      <button class="icon-btn" id="btn-ui-mode" title="화면을 쉽게/자세히 바꿔요">🔎 자세히 보기</button>
       <button class="icon-btn" id="btn-home" hidden>내 공부방</button>
       <button class="icon-btn" id="btn-logout" hidden>나가기</button>
     </div>
@@ -703,7 +681,7 @@
         <div>
           <label class="field-label" for="st-band">학년</label>
           <select class="select" id="st-band"></select>
-          <p class="hint easy-hide">3·4학년, 5·6학년, 중1~3학년은 학년군으로 묶여 있어서, 같은 묶음이면 배울 내용이 같아요.</p>
+          <p class="hint">3·4학년, 5·6학년, 중1~3학년은 학년군으로 묶여 있어서, 같은 묶음이면 배울 내용이 같아요.</p>
         </div>
         <div>
           <label class="field-label" for="st-subject">과목 <span style="color:var(--muted);font-weight:500">(안 골라도 돼요)</span></label>
@@ -785,9 +763,8 @@
     <div class="chatwrap">
       <div class="chat-head">
         <div class="meta">
-          <span class="phase-pill" id="phase-pill">먼저 이야기</span>
+          <span class="phase-pill" id="phase-pill">1단계 · 계획하기</span>
           <span id="chat-std">오늘 배울 내용</span>
-          <span class="support-mini" id="support-mini" title="AI 도움 크기 — 잘 이해할수록 줄어요"></span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <span class="support-badge" id="strategy-badge" style="background:var(--accent-wash);border-color:#cdeadd;color:var(--accent-ink)" title="내가 고른 공부 방법이에요 — 여러 개 고를 수 있고, 막히면 바꿔볼 수 있어요." hidden>
@@ -810,10 +787,10 @@
            연결이 안 보였다. 이제 가→나→다→라 전체를 하나의 띠로 항상 보여주고, 라 단계에
            들어서면 그 밑에 다·라의 세부(질문받기/과제하기/피드백받기/점검수정)만 보조로 덧붙인다. -->
       <div class="cycle-wrap" id="proc-wrap">
-        <div class="cycle-title">전체 대화 절차</div>
+        <div class="cycle-title">지금 하는 일</div>
         <div class="cycle-strip" id="proc-strip"></div>
         <div id="proc-sub-wrap" hidden style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">
-          <div class="cycle-title" style="font-size:11px">지금 방법 <b id="cycle-strat-name" style="color:var(--ink)"></b>으로 다·라를 계속 왔다갔다해요</div>
+          <div class="cycle-title" style="font-size:11px">지금 방법 <b id="cycle-strat-name" style="color:var(--ink)"></b>으로 이 순서를 되풀이해요</div>
           <div class="cycle-strip" id="cycle-strip"></div>
         </div>
       </div>
@@ -843,9 +820,6 @@
           <input class="input" id="chat-input" placeholder="편하게 말해도 돼요. 내 생각이나 예상을 먼저 적어 보세요." autocomplete="off" />
           <button class="btn btn-primary" id="chat-send">보내기</button>
         </div>
-        <label id="delegate-wrap" style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);font-weight:600" hidden>
-          <input type="checkbox" id="chk-delegate" /> 이번엔 "AI가 답을 알려줘"라고 부탁한 거예요
-        </label>
       </div>
     </div>
     <div class="nav">
@@ -862,7 +836,7 @@
       <p class="subhead" id="reflect-subhead">여기는 대화하는 곳이 아니라 <b>내가 나눈 이야기를 쭉 펼쳐 보는 곳</b>이에요. 내가 한 말 중에서 <b>내가 스스로 생각해서 물은 것</b>과 <b>AI에게 답을 맡긴 것</b>을 원하는 만큼 골라 보세요.</p>
     </div>
     <div class="cycle-wrap" style="border:1px solid var(--line);border-radius:14px;margin-bottom:16px">
-      <div class="cycle-title">되돌아보기 순서</div>
+      <div class="cycle-title">3단계 · 돌아보기 순서</div>
       <div class="cycle-strip" id="reflect-strip"></div>
     </div>
 
@@ -889,7 +863,7 @@
             </div>
           </div>
           <!-- 요청사항(3번째 피드백) 8: 대화 중 개별로 했던 "판단하기"를 한번에 묶어 다시 볼 수 있게 -->
-          <div class="box easy-hide">
+          <div class="box">
             <h4>👍🤔💭 AI 말 판단 모아보기</h4>
             <div id="judge-collected" class="stack" style="gap:6px"></div>
           </div>
@@ -903,7 +877,7 @@
             <h4>이번 공부에서 만든 자료</h4>
             <div id="artifact-log" class="stack" style="gap:8px"></div>
           </div>
-          <div class="easy-hide">
+          <div>
             <h4 style="font-size:13px;font-weight:800;margin-bottom:10px">내가 "다른 생각"으로 남긴 코멘트</h4>
             <div id="reflect-comments" class="stack" style="gap:8px"></div>
           </div>
@@ -911,18 +885,19 @@
       </div>
       <div>
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <label class="field-label" for="in-reflect-a" style="margin:0">역할 되돌아보기 — 왜 그렇게 나눴나요? 그리고 다음엔 내가 스스로 먼저 생각하고 묻는 순간을 늘리려면 어떻게 하면 좋을까요?</label>
+          <label class="field-label" for="in-reflect-a" style="margin:0">역할 되돌아보기 <span class="req-tag">꼭 적어요 · 한 문장 이상</span> — 다음엔 내가 먼저 생각하고 묻는 순간을 늘리려면 어떻게 하면 좋을까요?</label>
           <button type="button" class="btn btn-sm btn-ghost" id="hint-reflect-a">💡 막막하면 — 질문 하나 받기</button>
         </div>
         <p class="callout info" id="hint-reflect-a-box" style="margin:8px 0" hidden></p>
-        <textarea class="textarea" id="in-reflect-a" placeholder="① 내가 주도했던 순간과 AI에게 맡겼던 순간은 각각 어떤 상황이었나요? ② 다음엔 내 질문이 더 많아지려면 무엇을 바꿔 볼까요?"></textarea>
+        <div class="starters" data-for="in-reflect-a"><button type="button">나는 ___할 때 AI에게 맡겼어요.</button><button type="button">다음엔 ___해서 내가 먼저 생각해 볼래요.</button></div>
+        <textarea class="textarea" id="in-reflect-a" placeholder="예: 나는 계산이 헷갈릴 때 AI에게 맡겼어요. 다음엔 먼저 내 방법으로 풀어 보고 물어볼래요."></textarea>
       </div>
     </div>
 
     <!-- 나: 프롬프트(질문) 궤적 성찰 -->
     <div id="reflect-step-b" class="card stack" hidden>
       <div>
-        <h4 style="font-size:13px;font-weight:800;margin-bottom:10px">내가 AI에게 썼던 질문들 — 성찰해볼 만한 것을 원하는 만큼 골라봐요</h4>
+        <h4 style="font-size:13px;font-weight:800;margin-bottom:10px">내가 AI에게 썼던 질문들 — 돌아볼 질문을 <b>하나 이상</b> 골라요 <span class="req-tag">꼭 해요</span></h4>
         <div class="stack" id="prompt-list" style="gap:8px"></div>
       </div>
       <!-- 요청사항(11번째 피드백) 6: "질문 하나가 아니라, 유의미하다고 내가 직접 고른 복수개의
@@ -934,25 +909,25 @@
       </div>
       <div>
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <label class="field-label" for="in-reflect" style="margin:0">돌아보며 적기 — 내 생각을 더 잘 끌어내려면 다음엔 어떻게 물어봐야 할까요?</label>
+          <label class="field-label" for="in-reflect" style="margin:0">돌아보며 적기 <span class="req-tag">꼭 적어요 · 한 문장 이상</span> — 내 생각을 더 잘 끌어내려면 다음엔 어떻게 물어봐야 할까요?</label>
           <button type="button" class="btn btn-sm btn-ghost" id="hint-reflect-b">💡 막막하면 — 질문 하나 받기</button>
         </div>
         <p class="callout info" id="hint-reflect-b-box" style="margin:8px 0" hidden></p>
-        <textarea class="textarea" id="in-reflect" placeholder="제일 도움 됐던 질문 / 아쉬웠던 질문 / 다음엔 이렇게 물어볼래요"></textarea>
+        <div class="starters" data-for="in-reflect"><button type="button">"___"라고 물었을 때 도움이 됐어요.</button><button type="button">다음엔 ___처럼 더 자세히 물어볼래요.</button></div>
+        <textarea class="textarea" id="in-reflect" placeholder="예: &quot;왜 분모를 같게 해?&quot;라고 물었을 때 도움이 됐어요. 다음엔 내가 헷갈리는 부분을 먼저 말하고 물어볼래요."></textarea>
       </div>
       <!-- 요청사항(9번째 피드백) 2: "잔여물 확인은 다 해야 하는 필수 단계다" — 예전엔
            "지금 안 해도 돼요"라는 선택적 안내 카드였다. 되짚기의 세 번째 단계(다)로 명시하고,
            건너뛰는 경로(저장하고 바로 끝내기)를 없애 반드시 거쳐가게 한다. -->
       <div class="callout info">
-        <b>다음 단계: 혼자서 풀어보기</b> — 이야기하며 배운 게 나에게 얼마나 남았는지, AI 도움 없이 비슷한 문제 4개를 풀어서 공부 전과 후 점수를 비교해요. 되짚기의 마지막 단계예요.
+        <b>마지막: 혼자서 풀어보기</b> — 배운 게 나에게 얼마나 남았는지, AI 도움 없이 비슷한 문제 4개를 풀어 공부 전과 후를 비교해요. <b>다음 시간에 푸는 걸 권해요</b> — 시간이 조금 지난 뒤에 풀어야 정말 남은 것을 알 수 있어요. 내 공부방의 [이어서 하기]로 바로 시작할 수 있어요.
       </div>
     </div>
 
     <div class="nav">
       <button class="btn btn-ghost" id="reflect-back">← 이야기로 돌아가기</button>
       <span class="filler"></span>
-      <span style="display:flex;flex-direction:column;align-items:flex-end"><button class="btn btn-primary" id="reflect-next-a" disabled>다음: 내가 쓴 질문 보기 →</button><span class="gate-hint" id="reflect-gate"></span></span>
-      <button class="btn btn-primary" id="reflect-next-b" hidden>다음: 혼자 풀어보기 →</button>
+      <span style="display:flex;flex-direction:column;align-items:flex-end"><span style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btn-primary" id="reflect-next-a" disabled>다음: 내가 쓴 질문 보기 →</button><button class="btn" id="reflect-later" hidden disabled>다음 시간에 풀게요 (권장)</button><button class="btn btn-primary" id="reflect-next-b" hidden disabled>지금 혼자 풀어보기 →</button></span><span class="gate-hint" id="reflect-gate"></span></span>
     </div>
   </section>
 
@@ -964,7 +939,7 @@
       <p class="subhead">여기서는 AI와 이야기할 수 없어요. 대화 중에 썼던 방법으로 풀기 좋은 "쌍둥이 문제" 네 개(비슷한 문제 둘, 다르게 바꾼 문제 둘)를 혼자 풀고, 왜 그렇게 풀었는지 적어요. AI가 채점해서, 처음에 봤던 사전 진단 점수와 나란히 비교해요.</p>
     </div>
     <div class="cycle-wrap" style="border:1px solid var(--line);border-radius:14px;margin-bottom:16px">
-      <div class="cycle-title">되돌아보기 순서</div>
+      <div class="cycle-title">3단계 · 돌아보기 순서</div>
       <div class="cycle-strip" id="residual-strip"></div>
     </div>
     <!-- 요청사항(11번째 피드백) 7: "전략을 또 고르지 말고, 대화 중에 썼던 전략을 그대로 불러와
@@ -1002,10 +977,11 @@
            점을 성찰일지로 남기도록 한다" — 결과 판단(res-judge)과는 별개로, 공부 전체를 마치며
            남기는 마지막 성찰일지를 따로 둔다. -->
       <div>
-        <label class="field-label" for="res-journal">마지막으로 — 이번에 어려웠던 점이나, 이 공부를 하면서 새롭게 알게 된 점을 적어봐요</label>
+        <label class="field-label" for="res-journal">마지막으로 <span class="req-tag">꼭 적어요 · 한 문장 이상</span> — 이번에 어려웠던 점이나, 이 공부를 하면서 새롭게 알게 된 점을 적어봐요</label>
+        <div class="starters" data-for="res-journal"><button type="button">처음엔 ___가 어려웠는데,</button><button type="button">이제 ___를 알게 됐어요.</button></div>
         <textarea class="textarea" id="res-journal" placeholder="예: 처음엔 ~가 헷갈렸는데 ~하면서 알게 됐어요 / AI랑 이야기하고 나서 ~를 새롭게 알았어요"></textarea>
       </div>
-      <div class="nav"><span class="filler"></span><button class="btn btn-primary" id="res-finish">저장하고 내 공부방으로</button></div>
+      <div class="nav"><span class="filler"></span><span style="display:flex;flex-direction:column;align-items:flex-end"><button class="btn btn-primary" id="res-finish" disabled>저장하고 내 공부방으로</button><span class="gate-hint" id="res-finish-gate"></span></span></div>
     </div>
   </section>
 </div>
@@ -1218,8 +1194,20 @@ const SCAFFOLD_ORDER = [
   { key:'strategy',   q:'이 내용을 공부할 때 너는 어떤 순서로 하면 좋을 것 같아? 그렇게 생각한 이유도 말해줄래?', instr:`[원리7-② 전략 스캐폴딩] 아래 예시 중 하나를 골라 거의 그대로 1개만 물어봐: "이 문제에 접근할 때 어떤 순서로 생각을 풀어갔는지 말해줄 수 있어? 그리고 그 방법을 선택한 이유는?" 또는 "지금 막혔다면, 이전에 비슷한 문제를 풀 때 썼던 방법 중에 적용해볼 만한 게 있을까?" 질문은 1개만.` },
   { key:'connect',    q:'이 내용을 전에 배운 것이나 네 생활과 연결해 보면, 어떤 공통점이나 예가 떠올라?', instr:`[원리7-③ 연결 스캐폴딩] 아래 예시 중 하나를 골라 거의 그대로 1개만 물어봐: "이 내용을 지난 시간에 배운 개념과 연결 지어보면 어떤 공통점이나 차이점이 보여?" 또는 "이걸 네 일상이나 실제 사례에 적용해본다면 구체적으로 어떤 상황을 예로 들 수 있을까?" 질문은 1개만.` }
 ];
+// (개선) 원리7: 짧은 답 되묻기용 예시(학생이 무엇을 더 말하면 되는지 보여 준다).
+const META_REASK = {
+  usual:      '예를 들어 "교과서를 두 번 읽어요", "문제를 많이 풀어요"처럼 평소에 하는 방법을 하나만 말해 줘.',
+  understand: '예를 들어 "○○는 알겠는데 왜 그렇게 되는지는 헷갈려"처럼 말해 줘.',
+  strategy:   '예를 들어 "먼저 뜻을 읽고, 그다음 예를 찾아볼래"처럼 순서를 말해 줘.',
+  connect:    '예를 들어 "지난번에 배운 ○○랑 비슷해"나 "집에서 ○○할 때랑 같아"처럼 말해 줘.'
+};
+function isShallowAnswer(v){
+  const t = String(v||'').replace(/\s+/g,'');
+  if(t.length < 6) return true;
+  return t.length < 14 && /^(몰라|모르겠|모름|없어|없음|없다|그냥|글쎄|네|응|ㅇㅇ|아니|잘모르)/.test(t);
+}
 const SUPPORT_LABEL = { high:'많이', mid:'보통', low:'조금' };
-const PHASES = { prep:'먼저 이야기', explore:'같이 알아가기', wrap:'마무리' };
+const PHASES = { prep:'1단계 · 계획하기', explore:'2단계 · 해 보기', wrap:'3단계 · 돌아보기' };
 
 /* 탐구 대화 중 순환하는 절차(원리8 전략적용 → 원리9 점검 → 원리10 학습자 판단).
    cycleNow 는 지금 이 루프에서 어디쯤 있는지를 나타내는 표시용 상태다.
@@ -1229,10 +1217,10 @@ const PHASES = { prep:'먼저 이야기', explore:'같이 알아가기', wrap:'�
 // 계속 왔다갔다할 수 있다고 요청받아, 표시 이름을 그 두 덩어리로 다시 묶었다(내부 신호 4개
 // 자체는 그대로 유지 — ask+apply=다, check+adjust=라).
 const CYCLE_LABELS = [
-  { k:'ask',    t:'다. 질문 받아요' },
-  { k:'apply',  t:'다. 방법대로 과제해봐요' },
-  { k:'check',  t:'라. AI 피드백 받아요' },
-  { k:'adjust', t:'라. 점검하고 수정해요' }
+  { k:'ask',    t:'할 일 받기' },
+  { k:'apply',  t:'방법대로 해 보기' },
+  { k:'check',  t:'AI가 본 내 답' },
+  { k:'adjust', t:'내가 판단하고 고치기' }
 ];
 /* 공부 방법별 구조화 산출물을 만들 때 AI에게 요구하는 JSON 스키마.
    마크다운 표·목록 대신 실제 표/마인드맵/비교/사슬 UI로 렌더링한다. */
@@ -1417,14 +1405,25 @@ async function evaluateAttempt(spec, attemptText){
 }
 // 원리1 [대화 중 지침] 1·2: 비계 감소 제안의 근거를 "AI 말에 좋아요를 누른 횟수"(수용≠이해)가 아니라
 // 실제 과업 수행 진단(성공 기준 충족 수준)으로 바꾼다. 연달아 잘 해내면 제안, 막히면 체크포인트를 당긴다.
+// (개선) 원리1 지침 2 "이해도 지표가 일정 기준 이상 유지되면": 예전엔 '대부분 충족' 2회 연속 또는
+// 체크포인트 4점 이상 2회 연속이어야 해서 거의 제안되지 않았다(가상 학생 8세션 중 6세션이 끝까지 '많이').
+// 과업 진단(0/50/100)과 이해도 체크(1~5→0~100)를 하나의 이해도 지표로 모아, 최근 3개 평균이
+// 65 이상이면 줄이기를 '제안'한다(줄일지는 여전히 학습자가 고른다 — 원리1 지침 3).
+const FADE_WINDOW = 3, FADE_THRESHOLD = 65;
+function pushUnderstanding(val, src){
+  session.uIdx = session.uIdx || [];
+  session.uIdx.push({ v:val, src, at:new Date().toISOString() });
+  const since = session.uIdxSince || 0;
+  const recent = session.uIdx.slice(since).slice(-FADE_WINDOW);
+  if(recent.length < FADE_WINDOW) return;
+  const avg = recent.reduce((a,x)=>a+x.v,0)/recent.length;
+  const last = recent[recent.length-1];
+  const pending = (session.turns||[]).some(t=>t.kind==='fade-propose' && !t.answered);
+  if(avg >= FADE_THRESHOLD && last.v > 0 && !pending){ session.uIdxSince = session.uIdx.length; proposeFade(); }
+}
 function onTaskEvaluated(ev){
-  if(ev.level===2){
-    session.taskHighStreak = (session.taskHighStreak||0) + 1;
-    if(session.taskHighStreak>=2){ session.taskHighStreak = 0; proposeFade(); }
-  } else {
-    session.taskHighStreak = 0;
-    if(ev.level===0) session.checkpointForceSoon = true;
-  }
+  pushUnderstanding(ev.level*50, 'task');
+  if(ev.level===0) session.checkpointForceSoon = true;
 }
 function evalFeedbackInstr(spec, ev){
   const strat = STRATS.find(x=>x.id===spec.stratId);
@@ -1441,6 +1440,9 @@ function evalCardHTML(ev){
     ${ev.missing.length?`<div class="tc-row"><b>🔧 더 해볼 점</b> ${ev.missing.map(esc).join(' · ')}</div>`:''}
     ${ev.errorType && ev.errorType!=='특별한 착오 없음'?`<div class="tc-row err"><b>🤔 헷갈린 곳</b> ${esc(ev.errorType)} (AI 짐작)</div>`:''}
   </div>`;
+}
+function isAnswerRequest(v){
+  return /(답\s*(좀\s*)?(알려|말해|가르쳐)|정답\s*(이\s*)?(뭐|알려|말해)|대신\s*(해|풀어|써|만들어)|그냥\s*(풀어|알려|해\s*줘)|풀어\s*줘|답만)/.test(String(v));
 }
 function isHelpRequest(v){
   const t = String(v).trim();
@@ -1622,26 +1624,6 @@ window.addEventListener('beforeunload', ()=>{
 try{ localStorage.removeItem('mars.db.v3'); }catch(e){}
 
 /* ---------- router ---------- */
-/* ===== (개선) 쉬운 화면 / 자세한 화면 =====
-   초등학생에게 대화 화면 위 안내 막대 6줄, AI 말마다 붙는 버튼·카드, 긴 방법 카드가 너무 많았다.
-   초등 학년은 기본으로 "쉬운 화면"(필요한 것만 보이고 나머지는 눌러서 펼침), 중·고등은 "자세한 화면".
-   원리1(도움 크기)·원리3(시각화)·원리5(과업 분담) 요소는 없애지 않고 한 번 더 눌러 보는 곳으로 옮긴다.
-   오른쪽 위 버튼으로 언제든 바꿀 수 있다(이 브라우저에 기억). */
-function lastGradeKnown(){
-  if(session && session.ctx && session.ctx.grade) return session.ctx.grade;
-  const acc = typeof account==='function' ? account() : null;
-  const last = acc && acc.sessions && acc.sessions.length ? acc.sessions[acc.sessions.length-1] : null;
-  if(last && last.ctx) return last.ctx.grade;
-  const b = document.getElementById('st-band'); return b && b.value ? b.value : '';
-}
-function applyUIMode(){
-  let pref = null; try{ pref = localStorage.getItem('uiMode'); }catch(e){}
-  const g = lastGradeKnown();
-  const easy = pref ? pref==='easy' : (!g || /초등/.test(g));
-  document.body.classList.toggle('easy', easy);
-  const b = document.getElementById('btn-ui-mode'); if(b) b.textContent = easy ? '🔎 자세히 보기' : '🙂 쉽게 보기';
-  const d = document.getElementById('tb-details'); if(d && !d.dataset.touched) d.open = !easy;
-}
 function show(name){
   $$('.screen').forEach(el => el.classList.toggle('is-active', el.dataset.screen === name));
   window.scrollTo({ top:0, behavior:'smooth' });
@@ -1649,7 +1631,6 @@ function show(name){
   $('#who').hidden = !authed; $('#btn-home').hidden = !authed; $('#btn-logout').hidden = !authed;
   if (authed) $('#who').textContent = DB.currentUser + ' 님';
   paintProcessBar();
-  applyUIMode();
   if (name === 'home') renderHome();
   if (name === 'start') renderStart();
   if (name === 'chat') enterChat();
@@ -1765,7 +1746,7 @@ function renderHome(){
     if(!db){ db = document.createElement('div'); db.id = 'home-draft'; $('#home-summary-line').insertAdjacentElement('afterend', db); }
     const d = acc.draft;
     if(d && d.session && d.session.ctx){
-      const when = new Date(d.savedAt); const where = {chat:'AI와 이야기하던 중', reflect:'되짚어보던 중', residual:'혼자 풀어보던 중'}[d.screen] || '공부하던 중';
+      const when = new Date(d.savedAt); const where = (d.screen==='residual' && d.session.residualDeferred && !(d.session.residual||{}).started) ? '3단계 혼자 풀어보기만 남았어요' : ({chat:'AI와 이야기하던 중', reflect:'돌아보던 중', residual:'혼자 풀어보던 중'}[d.screen] || '공부하던 중');
       db.innerHTML = `<div class="draft-banner"><b>📌 지난번에 하던 공부가 있어요 — ${esc(d.session.ctx.subject)} · ${esc(trim(d.session.ctx.std,30))} (${where}, ${when.getMonth()+1}/${when.getDate()} ${String(when.getHours()).padStart(2,'0')}:${String(when.getMinutes()).padStart(2,'0')})</b><button type="button" class="btn btn-primary btn-sm" id="draft-resume">이어서 하기</button><button type="button" class="btn btn-ghost btn-sm" id="draft-discard">그만하기(기록만 남기기)</button></div>`;
       $('#draft-resume').onclick = resumeDraft;
       $('#draft-discard').onclick = ()=>{ archiveDraft(); renderHome(); };
@@ -2527,13 +2508,10 @@ function renderScaffoldStrip(){
 }
 function paintSupport(){
   renderScaffoldStrip();
-  const sm = $('#support-mini');
-  if(sm && session){ const lv = { high:['🟢🟢🟢','많이'], mid:['🟢🟢⚪','보통'], low:['🟢⚪⚪','조금'] }[session.support] || ['',''];
-    sm.textContent = `AI 도움 ${lv[0]} ${lv[1]}`; }
 }
 function paintPhase(){
   renderGoalStrip();
-  const p = $('#phase-pill'); p.textContent = PHASES[session.phase]; p.classList.toggle('explore', session.phase!=='prep');
+  const p = $('#phase-pill'); const planning = session.phase==='prep' || (session.phase==='explore' && !session.cycleStarted); p.textContent = planning ? PHASES.prep : PHASES[session.phase]; p.classList.toggle('explore', !planning);
   // 원리8: 고른 인지 전략을 헤더 배지로도 고정 노출(원리1·5와 같은 자리에) — cycle-wrap 문구만으론 스크롤 시 안 보일 수 있어서다.
   const sb = $('#strategy-badge');
   if(session.strategyLabel){
@@ -2553,7 +2531,6 @@ function paintPhase(){
   $('#pn-title').textContent = '스스로 점검 충분해요';
   $('#pn-desc').textContent = '더 이야기해도 좋아요. 준비됐으면 눌러서 다음(방법 고르기)으로 가요 — 넘어갈 때는 직접 정해요.';
   $('#btn-stuck').hidden = session.phase!=='explore' || !session.cycleStarted;
-  $('#delegate-wrap').hidden = session.phase!=='explore' || !session.cycleStarted;
   $('#chat-finish').hidden = session.phase==='prep' || !session.cycleStarted;
   { // (사용성) 언제 끝내면 되는지: 고른 방법을 모두 해 봤으면 버튼을 강조하고 문구로 알려 준다
     const done = session.strategies && session.strategies.length && session.strategies.every(id=>(session.stratDone||{})[id] || ((session.stratRounds||{})[id]||0) >= 2);
@@ -2607,10 +2584,10 @@ function syncComposeLock(){
 // 요청사항(5번째 피드백) 4: "절차는 전체 챗봇 대화 절차를 중심으로" — 가·나·다(준비)와
 // 라(탐구)가 서로 다른 표시 바로 나뉘어 있던 걸 하나로 합친다. 이 4개가 대화 전체의 뼈대다.
 const PROCESS_LABELS = [
-  { k:'activate', t:'가. 아는 것 확인' },
-  { k:'meta',     t:'나. 스스로 점검' },
-  { k:'ready',    t:'다. 방법 정하기' },
-  { k:'explore',  t:'라. 방법대로 하기(반복)' }
+  { k:'activate', t:'계획 · 아는 것 확인' },
+  { k:'meta',     t:'계획 · 스스로 점검' },
+  { k:'ready',    t:'계획 · 공부 방법 고르기' },
+  { k:'explore',  t:'해 보기 · 방법대로 (반복)' }
 ];
 function renderProcStrip(){
   const box = $('#proc-strip'); if(!box) return;
@@ -2649,7 +2626,7 @@ function renderCycleStrip(){
   const strat = currentApplyStrat();
   const now = session.cycleNow || 'ask';
   $('#cycle-strip').innerHTML = CYCLE_LABELS.map((c,i)=>{
-    const label = c.k==='apply' && strat ? `② ${strat.label}로 해봐요` : c.t;
+    const label = c.k==='apply' && strat ? `${strat.label}로 해 보기` : c.t;
     const arrow = i<CYCLE_LABELS.length-1 ? '<span class="cycle-arrow">→</span>' : '<span class="cycle-arrow">↻</span>';
     return `<span class="cycle-node ${c.k===now?'now':''}">${esc(label)}</span>${arrow}`;
   }).join('');
@@ -2672,17 +2649,23 @@ function paintProcessBar(){
   const scr = document.querySelector('.screen.is-active')?.dataset.screen;
   if(!['start','chat','reflect','residual'].includes(scr)){ bar.hidden = true; return; }
   bar.hidden = false;
-  const stage = scr==='start' ? 0 : scr==='chat' ? 1 : 2;
-  const midDesc = !session ? '무엇을 배울지 정하는 중' : session.phase==='prep' ? '먼저 이야기 나누는 중' : !session.cycleStarted ? '공부 방법 정하는 중' : '방법대로 같이 알아가는 중';
+  // 원리 문서의 세 계열(대화 준비 · 대화 과정 · 대화 이후)을 학생 말로 옮긴 3단계.
+  // 방법 고르기(원리8)까지는 계획, 고른 방법으로 과업을 반복하는 동안은 해 보기다.
+  const planning = scr==='start' || (scr==='chat' && (!session || !session.cycleStarted));
+  const stage = planning ? 0 : scr==='chat' ? 1 : 2;
+  const planDesc = scr==='start' || !session ? '배울 것 정하고 AI와 할 일 나누기'
+    : session.phase==='prep' && session.prepStep==='meta' ? '스스로 점검하기'
+    : session.phase==='prep' ? '아는 것 확인하기' : '공부 방법 고르기';
+  const backDesc = scr==='residual' ? 'AI 없이 혼자 풀어보기' : (session && session.reflect && session.reflect.step==='prompt') ? '내 질문 돌아보기' : '누가 이끌었나 돌아보기';
   const steps = [
-    { t:'① 대화 시작 전', d:'배울 내용 정하고 오늘 할 일 나누기' },
-    { t:'② 대화 중', d: midDesc },
-    { t:'③ 대화 이후', d: scr==='residual' ? '혼자서 풀어보며 확인' : '되짚어보기' }
+    { t:'계획하기', d: stage===0 ? planDesc : '배울 것·내 상태·방법 정하기', why:'무엇을, 어떻게 공부할지 스스로 정해요' },
+    { t:'해 보기', d: '고른 방법대로 해 보고 점검하기', why:'해 보고, AI 의견을 내가 판단해요' },
+    { t:'돌아보기', d: stage===2 ? backDesc : '어떻게 배웠는지 돌아보기', why:'AI 없이 얼마나 남았는지 확인해요' }
   ];
   bar.innerHTML = steps.map((s,i)=>{
     const cls = i<stage ? 'done' : i===stage ? 'active' : '';
     const line = i<steps.length-1 ? `<span class="pb-line ${i<stage?'done':''}"></span>` : '';
-    return `<div class="pb-step ${cls}"><span class="pb-dot">${i<stage?'✓':i+1}</span><span class="pb-label"><b>${s.t}</b><small>${esc(s.d)}</small></span></div>${line}`;
+    return `<div class="pb-step ${cls}"><span class="pb-dot">${i<stage?'✓':i+1}</span><span class="pb-label"><b>${s.t}</b><small>${esc(i===stage ? s.d + ' — ' + s.why : s.d)}</small></span></div>${line}`;
   }).join('');
 }
 function pushNote(text){ session.turns.push({ id:uid(), role:'note', text }); renderStream(); }
@@ -2824,7 +2807,7 @@ function renderStream(){
     box.insertAdjacentHTML('beforeend',
       `<div class="msg ${mine?'me':'ai'}"><div class="av">${mine?'나':'AI'}</div><div style="flex:1">
         ${body}
-        ${mine && t.delegate ? '<div class="hint">· AI에게 답을 맡긴 질문</div>' : ''}
+        ${mine && t.delegate ? '<div class="hint">· 답을 부탁한 말 같아요(자동 표시 — 맞는지는 내가 정해요)</div>' : ''}
         ${extra}
       </div></div>`);
   });
@@ -2850,7 +2833,7 @@ const PROMPT_RATE_DIMS = [
 ];
 function promptRateRowHTML(tid, dim, val){
   return `<div>
-    <div class="field-label" style="margin-bottom:6px">${dim.label} <span style="color:var(--muted);font-weight:500">— ${esc(dim.desc)}</span></div>
+    <div class="field-label" style="margin-bottom:6px">${dim.label} <span style="color:var(--muted);font-weight:500">— ${esc(dim.desc)} (1 전혀 아니에요 ~ 5 아주 그래요)</span></div>
     <div class="understand-pick" data-rate-tid="${tid}" data-rate-dim="${dim.k}">${[1,2,3,4,5].map(n=>`<button type="button" class="u-chip ${val===n?'is-selected':''}" data-tid="${tid}" data-dim="${dim.k}" data-n="${n}"><span class="u-emoji">${n}</span></button>`).join('')}</div>
   </div>`;
 }
@@ -3957,8 +3940,10 @@ function fade(accepted){
 function sendChat(){
   const el=$('#chat-input'); const v=anonymize(el.value.trim());
   if(!v || busy) return;
-  const delegate = session.phase==='explore' && $('#chk-delegate').checked;
-  el.value=''; $('#chk-delegate').checked=false;
+  // (개선) "AI가 답을 알려줘" 체크박스를 없앴다 — 학생이 굳이 표시하지 않아도 답을 맡기는 말을
+  // 알아채 정답 대신 단서로 응답하고, 누가 이끌었는지의 최종 분류는 ③ 돌아보기에서 학생이 직접 한다(원리11).
+  const delegate = session.phase==='explore' && !!session.cycleStarted && isAnswerRequest(v);
+  el.value='';
   pushMe(v, delegate);
 
   // 준비 대화: 단계별로 여러 턴 이어짐. [다음으로] 버튼으로만 단계 전환.
@@ -3974,10 +3959,26 @@ function sendChat(){
       return;
     }
     if(step==='meta'){
+      // (개선) 원리7 — 답이 너무 짧거나 "몰라"뿐이면 한 번만 더 구체적으로 묻는다(질문마다 1회).
+      // 넘어가지 않고 같은 질문에 머무르며, 첫 답도 버리지 않고 이어 붙여 기록한다.
+      const reKey = String(session.meta.step||0);
+      session.meta.reasked = session.meta.reasked || {};
+      if(isShallowAnswer(v) && !session.meta.reasked[reKey]){
+        session.meta.reasked[reKey] = true;
+        if(!session.meta.step) session.meta.usualMethod = v.slice(0,200);
+        else {
+          const k0 = SCAFFOLD_ORDER[(session.meta.step||1)-1].key;
+          session.meta.answers = session.meta.answers || {};
+          session.meta.answers[k0] = v; session.meta.raw = (session.meta.raw ? session.meta.raw+' / ' : '') + v;
+        }
+        const ex = !session.meta.step ? META_REASK.usual : META_REASK[SCAFFOLD_ORDER[(session.meta.step||1)-1].key];
+        ai(`학습자가 스스로 점검 질문에 아주 짧게 답했다("${v}"). 판단하거나 탓하지 말고, 괜찮다는 느낌으로 한 문장으로만 반응하라. 질문하지 말고 설명·풀이·과업도 하지 마라.`, null, null, { maxLen:140, noNewTask:true, suffix:`조금만 더 자세히 말해 줄래? ${ex}` });
+        return;
+      }
       // 요청사항 7 — 나 단계(원리7): step 0은 "평소 어떻게 공부해?"에 대한 답(usualMethod).
       // 아직 스캐폴딩 질문이 아니므로 채점 대상 raw에는 넣지 않고 따로 보관한다.
       if(!session.meta.step){
-        session.meta.usualMethod = v.slice(0,200);
+        session.meta.usualMethod = ((session.meta.reasked['0'] && session.meta.usualMethod) ? session.meta.usualMethod + ' / ' : '') + v.slice(0,200);
         session.meta.step = 1;
         ai(`학습자가 평소 공부법을 "${session.meta.usualMethod}"라고 답했다. 판단하지 말고 학습자의 방금 말에 한 문장으로만 짧게 반응하라. 질문하지 말고, 설명·풀이·예시 문제·연습 과업도 하지 마라(지금은 스스로 점검하는 단계다).`, null, null, { maxLen:160, noNewTask:true, suffix:'이제 조금 더 구체적으로 스스로 점검해 보자. '+SCAFFOLD_ORDER[0].q });
         return;
@@ -4146,9 +4147,9 @@ const STRUCT_TYPE_LABEL = { table:'📊 표', mindmap:'🕸️ 마인드맵', co
 // (원리13) — 가·나는 되짚기 화면 안에서, 다는 별도 화면(잔여물 확인)에서 이어지지만 같은
 // 순서 표시 띠를 공유해 "지금 세 단계 중 어디쯤인지"가 화면이 바뀌어도 끊기지 않게 한다.
 const REFLECT_STEPS = [
-  { k:'delegate', t:'가. 누가 이끌었나 돌아보기' },
-  { k:'prompt',   t:'나. 내 질문 돌아보기' },
-  { k:'residual', t:'다. 혼자 풀어보기' }
+  { k:'delegate', t:'누가 이끌었나 돌아보기' },
+  { k:'prompt',   t:'내 질문 돌아보기' },
+  { k:'residual', t:'혼자 풀어보기' }
 ];
 function renderWrapStrip(sel, cur){
   const idx = REFLECT_STEPS.findIndex(x=>x.k===cur);
@@ -4159,7 +4160,7 @@ function renderWrapStrip(sel, cur){
     return `<span class="cycle-node ${cls}">${cls==='done'?'✓ ':''}${c.t}</span>${arrow}`;
   }).join('');
 }
-function renderReflectStrip(){ renderWrapStrip('#reflect-strip', session.reflect.step || 'delegate'); }
+function renderReflectStrip(){ renderWrapStrip('#reflect-strip', session.reflect.step || 'delegate'); paintProcessBar(); }
 // 요청사항(3번째 피드백) 9: "내가 생각 3개·AI에게 맡김 3개"로 가짓수를 제한하지 말라는 지적을
 // 반영 — 원하는 만큼 자유롭게 태깅할 수 있다(전부 다 태깅해야 하는 것도 아니다).
 function tagCounts(){
@@ -4173,8 +4174,27 @@ function syncReflectA(){
   $('#tag-counter').textContent = `내가 생각 ${self} · AI에게 맡김 ${ai_}`;
   // 가짓수 제한은 없앴다. 최소한 하나는 골라야 다음으로 갈 수 있게만 해서, 아무것도 안 고르고
   // 그냥 넘어가는 것만 막는다.
-  $('#reflect-next-a').disabled = total>0 && (self+ai_)===0;
-  const rg = $('#reflect-gate'); if(rg) rg.textContent = $('#reflect-next-a').disabled ? '👈 왼쪽 목록에서 내 말 옆의 [내가 생각]·[AI에게 맡김]을 하나 이상 눌러요' : '';
+  syncReflectGate();
+}
+// (개선) 원리11·12의 성찰 기록은 "남기도록 한다"는 필수 활동이라, 빈칸으로 넘어가지 않게 막고
+// 무엇이 남았는지 알려 준다. 원리가 정한 활동 두 개(역할 성찰 글, 질문 성찰 글)는 합치지 않고 따로 둔다.
+const MIN_REFLECT = 8;
+function syncReflectGate(){
+  const rg = $('#reflect-gate'); const miss = [];
+  if((session.reflect.step||'delegate')==='delegate'){
+    const { self, ai_, total } = tagCounts();
+    if(total>0 && (self+ai_)===0) miss.push('👈 내 말 옆의 [내가 생각]·[AI에게 맡김]을 하나 이상 눌러요');
+    if((($('#in-reflect-a')||{}).value||'').trim().length < MIN_REFLECT) miss.push('✏️ 역할 되돌아보기를 한 문장 이상 적어요');
+    $('#reflect-next-a').disabled = miss.length>0;
+  } else {
+    const rated = (session.reflect.promptRatings||[]).filter(r=>PROMPT_RATE_DIMS.every(d=>r[d.k]!=null));
+    const anyMe = session.turns.some(t=>t.role==='me');
+    if(anyMe && !(session.reflect.promptRatings||[]).length) miss.push('👆 돌아볼 내 질문을 하나 이상 골라요');
+    else if(anyMe && !rated.length) miss.push('⭐ 고른 질문에 점수 세 가지를 모두 매겨요');
+    if((($('#in-reflect')||{}).value||'').trim().length < MIN_REFLECT) miss.push('✏️ 돌아보며 적기를 한 문장 이상 적어요');
+    $('#reflect-next-b').disabled = miss.length>0; $('#reflect-later').disabled = miss.length>0;
+  }
+  if(rg) rg.textContent = miss.join(' · ');
 }
 function enterReflect(){
   session.phase='wrap';
@@ -4184,6 +4204,7 @@ function enterReflect(){
   $('#reflect-step-b').hidden = session.reflect.step!=='prompt';
   $('#reflect-next-a').hidden = session.reflect.step!=='delegate';
   $('#reflect-next-b').hidden = session.reflect.step!=='prompt';
+  $('#reflect-later').hidden = session.reflect.step!=='prompt';
   if(session.reflect.step==='delegate'){ $('#reflect-headline').textContent='누가 이끌었고, 무엇을 AI에게 맡겼나'; $('#reflect-subhead').innerHTML='여기는 대화하는 곳이 아니라 <b>내가 나눈 이야기를 쭉 펼쳐 보는 곳</b>이에요. 내가 한 말 중에서 <b>내가 스스로 생각해서 물은 것</b>과 <b>AI에게 답을 맡긴 것</b>을 원하는 만큼 골라 보세요.'; }
   else { $('#reflect-headline').textContent='내가 무엇을 물었나'; $('#reflect-subhead').innerHTML='이번엔 내가 <b>AI에게 썼던 질문들만</b> 다시 살펴봐요. 내 생각을 더 잘 끌어내려면 다음엔 어떻게 물었어야 할지 적어 보세요.'; }
 
@@ -4270,6 +4291,7 @@ function enterReflect(){
   $('#prompt-rate-wrap').hidden = prList.length===0;
   $('#prompt-rate-cards').innerHTML = prList.map(promptRateCardHTML).join('');
   $('#in-reflect').value = session.reflect.note || '';
+  syncReflectGate();
 }
 /* ===== 요청사항 3: 성찰이 "빈 칸에 글쓰기"로만 끝나지 않도록, 원하면 AI에게 "질문 하나"를
    받을 수 있게 한다. 단, AI가 성찰문을 대신 써주거나 요약해주지는 않는다 — 이 세션에서 실제로
@@ -4407,7 +4429,7 @@ function renderResidualQuiz(){
         ${banner}
         <p class="prompt">${esc(it.q)}</p>
         ${resAnswerFieldHTML(it, i, itemStrat)}
-        <div><label class="field-label">왜 그렇게 풀었는지 설명 (꼭 적어요)</label><textarea class="textarea res-e" data-i="${i}" placeholder="맞았는지 틀렸는지는 상관없어요. 어떻게 생각했는지 적어요">${esc(it.e)}</textarea></div>
+        <div><label class="field-label">왜 그렇게 풀었는지 설명 ${resExplainRequired(it)?'<span class="req-tag">꼭 적어요</span>':'<span class="opt-tag">선택</span>'}</label><textarea class="textarea res-e" data-i="${i}" placeholder="맞았는지 틀렸는지는 상관없어요. 어떻게 생각했는지 적어요">${esc(it.e)}</textarea></div>
         <div><label class="field-label">이 답, 얼마나 자신 있어요?</label><input type="range" class="range res-c" data-i="${i}" min="0" max="100" step="10" value="${it.c}" /><div class="range-val res-c-val" data-i="${i}">${it.c}%</div></div>
       </div>
     </div>
@@ -4418,11 +4440,23 @@ function renderResidualQuiz(){
 function syncResSubmit(){
   const ok = residualValid();
   $('#res-submit').disabled = !ok; $('#res-warn').hidden = ok;
-  if(!ok){ const miss = []; session.residual.items.forEach((it,i)=>{ if((it.a||'').trim().length < (it.type==='mcq'?1:2)) miss.push(`${i+1}번 ${it.type==='mcq'?'답 고르기':'풀이'}`); if((it.e||'').trim().length<2) miss.push(`${i+1}번 설명`); });
+  if(!ok){ const miss = []; session.residual.items.forEach((it,i)=>{ if((it.a||'').trim().length < (it.type==='mcq'?1:2)) miss.push(`${i+1}번 ${it.type==='mcq'?'답 고르기':'풀이'}`); if(resExplainRequired(it) && (it.e||'').trim().length<2) miss.push(`${i+1}번 설명`); });
     $('#res-warn').textContent = '⚠ 아직 안 쓴 곳: ' + miss.join(', ') + ' — 다 쓰면 [내고 비교 보기]가 켜져요.'; }
 }
+function syncResFinish(){
+  const ok = String(session.residual.journal||'').trim().length >= MIN_REFLECT;
+  const b = $('#res-finish'); if(b) b.disabled = !ok;
+  const g = $('#res-finish-gate'); if(g) g.textContent = ok ? '' : '✏️ 마지막 글을 한 문장 이상 적으면 저장할 수 있어요';
+}
+// (개선) 설명은 대화 중 쓴 방법의 "쌍둥이 문제"(방법이 짝지어진 문항)에서만 필수로 받는다.
+// 원리13은 "유사한 과업 수행 + 전후 비교"를 요구하고 문항별 설명은 요구하지 않아서, 나머지는 선택으로 둔다.
+function resExplainRequired(it){
+  const items = session.residual.items||[];
+  const anyPaired = items.some(x=>x.strategyId);
+  return anyPaired ? !!it.strategyId : it.type!=='mcq';
+}
 function residualValid(){
-  return session.residual.items.length===4 && session.residual.items.every(it => (it.a||'').trim().length>=(it.type==='mcq'?1:2) && (it.e||'').trim().length>=2);
+  return session.residual.items.length===4 && session.residual.items.every(it => (it.a||'').trim().length>=(it.type==='mcq'?1:2) && (!resExplainRequired(it) || (it.e||'').trim().length>=2));
 }
 async function submitResidual(){
   session.residual.items.forEach(it=>{ it.a = anonymize((it.a||'').trim()); it.e = anonymize((it.e||'').trim()); });
@@ -4474,7 +4508,7 @@ function renderResidualResult(){
     (()=>{ const a = session.prior.sub||{}, b = session.residual.sub||{}; const f = (x,y,l)=> (x!=null||y!=null) ? `${l} ${x??'-'}→${y??'-'}` : null;
       const parts = [f(a.activate,b.activate,'떠올리기'), f(a.understand,b.understand,'설명'), f(a.apply,b.apply,'적용')].filter(Boolean);
       return ['영역별 변화 (사전 → 사후)', parts.join(' · ') || '측정 안 됨', deltaChip('na','같은 종류의 문항끼리 비교해요')]; })(),
-    ['이해도 흐름 (사전 → 방법대로 하던 중 → 사후)', `체크포인트 ${cpScores.length}번 참여<div class="hint">방법대로 과제를 하던 라 단계 동안 스스로 매긴 이해도 평균이에요.</div>`, deltaChip('na', `사전 ${preTxt} → 수행 중 ${cpTxt} → 사후 ${postTxt}`)],
+    ['이해도 흐름 (사전 → 방법대로 하던 중 → 사후)', `체크포인트 ${cpScores.length}번 참여<div class="hint">2단계 해 보기 동안 스스로 매긴 이해도 평균이에요.</div>`, deltaChip('na', `사전 ${preTxt} → 수행 중 ${cpTxt} → 사후 ${postTxt}`)],
     ['설명을 잘 했나', `${esc(ev.selfExplain.level)}<div class="hint">${esc(ev.selfExplain.note||'')}</div>`, deltaChip('na','잘잘못은 정하지 않고 참고만 해요')],
     ['배운 방법을 썼나', `${ev.transfer.applied===true?'스스로 썼어요':ev.transfer.applied===false?'안 썼어요':'선생님이 봐요'}<div class="hint">${esc(ev.transfer.note||'')}</div>`, deltaChip('na','공부할 때 고른 방법: '+(session.strategyLabel||'안 골랐어요'))],
     ['자신감이 실제와 얼마나 맞았나', ev.metacogBrier==null?'지금은 확인 못 해요':`오차 ${ev.metacogBrier.toFixed(2)} <span class="hint">(0에 가까울수록 자신감과 실제 결과가 잘 맞아요)</span>`, deltaChip('na','사전 자신감 '+(session.prior.score||'-')+'/5 · 사전 진단 vs 자신감 오차는 아래 참고')]
@@ -4484,6 +4518,7 @@ function renderResidualResult(){
   $('#res-comment').hidden = session.residual.judge!=='comment';
   $('#res-comment').value = session.residual.comment||'';
   $('#res-journal').value = session.residual.journal||'';
+  syncResFinish();
   if(session.residual.judge){
     $('#res-report').hidden=false;
     const jl={accept:'"전보다 나아졌어요"라고 스스로 판단',hold:'"아직 잘 모르겠어요"로 남겨 둠',comment:'결과에 할 말을 남김'}[session.residual.judge];
@@ -4580,10 +4615,7 @@ function init(){
     if(accD && accD.draft && !window.confirm('하던 공부가 남아 있어요. 새 공부를 시작하면 하던 공부는 지워져요. 그래도 새로 시작할까요?')){ ev.stopImmediatePropagation(); return; }
     if(accD && accD.draft) archiveDraft(); stPicks=[]; $('#st-filter').value=''; $('#st-topic').value=''; $('#st-match-status').hidden=true; show('start'); });
   $('#btn-seed-sample').addEventListener('click', seedSampleSessions);
-  $('#btn-ui-mode').addEventListener('click', ()=>{ const easy = document.body.classList.contains('easy'); try{ localStorage.setItem('uiMode', easy ? 'full' : 'easy'); }catch(e){} applyUIMode(); if(session && currentScreen()==='chat') renderStream(); });
   $('#btn-tools').addEventListener('click', ()=>{ document.body.classList.toggle('tools-open'); });
-  $('#tb-details').addEventListener('toggle', e=>{ e.target.dataset.touched = '1'; });
-  $('#st-band').addEventListener('change', applyUIMode);
   document.querySelector('.growth-tabs').addEventListener('click', e => { const b = e.target.closest('.gt'); if(b) showGrowthTab(b.dataset.tab); });
   try{ const t = localStorage.getItem('growthTab'); if(t) showGrowthTab(t); }catch(e){}
   $('#btn-clear-sample').addEventListener('click', clearSampleSessions);
@@ -4833,12 +4865,7 @@ function init(){
       // "판단하기"에서 좋아요를 연달아 2번 골라야만(선택적 신호) 줄어들어서, 그 클릭을 안 하면
       // 아무리 잘 이해해도 안 줄었다. 이해도 체크포인트(필수로 매번 답해야 하는 신호)도 높게
       // (4~5) 연달아 2번 나오면 같은 방식으로 줄어들게 해, 더 안정적으로 반영되게 한다.
-      if(t.score!=null && t.score>=4){
-        session.cpHighStreak = (session.cpHighStreak||0) + 1;
-        // (개선) 자기평정만으로 줄이지 않도록, 최근 과업 진단이 '대부분 미충족'이면 제안을 보류한다.
-        const lastEv = ((session.currentTask||{}).evals||[]).slice(-1)[0];
-        if(session.cpHighStreak>=2 && !(lastEv && lastEv.level===0)){ session.cpHighStreak=0; proposeFade(); }
-      } else { session.cpHighStreak = 0; }
+      if(t.score!=null) pushUnderstanding((t.score-1)*25, 'checkpoint');
       renderStream(); syncComposeLock();
       return;
     }
@@ -5075,7 +5102,24 @@ function init(){
   $('#res-submit').addEventListener('click', submitResidual);
   $('#res-judge').addEventListener('click', e=>{ const b=e.target.closest('.choice'); if(!b) return; session.residual.judge=b.dataset.v; renderResidualResult(); });
   $('#res-comment').addEventListener('input', e=>{ session.residual.comment = e.target.value; });
-  $('#res-journal').addEventListener('input', e=>{ session.residual.journal = e.target.value; });
+  $('#res-journal').addEventListener('input', e=>{ session.residual.journal = e.target.value; syncResFinish(); });
+  $('#in-reflect-a').addEventListener('input', e=>{ session.reflect.noteA = e.target.value; syncReflectGate(); });
+  $('#in-reflect').addEventListener('input', e=>{ session.reflect.note = e.target.value; syncReflectGate(); });
+  // 문장 시작 도움말: 누르면 해당 칸 끝에 이어 붙이고, 빈칸(___)을 채우도록 커서를 둔다.
+  document.querySelectorAll('.starters').forEach(box => box.addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(!b) return;
+    const ta = document.getElementById(box.dataset.for); if(!ta) return;
+    ta.value = (ta.value.trim() ? ta.value.trim() + ' ' : '') + b.textContent;
+    ta.dispatchEvent(new Event('input')); ta.focus();
+    const i = ta.value.lastIndexOf('___'); if(i>=0) ta.setSelectionRange(i, i+3);
+  }));
+  // (개선) 원리13 "AI의 도움을 제거한 맥락": 혼자 풀어보기는 다음 차시에 하도록 권하고, 이어서 하기로 연다.
+  $('#reflect-later').addEventListener('click', ()=>{
+    session.reflect.note = anonymize($('#in-reflect').value.trim());
+    session.endedAt = new Date().toISOString(); session.residualDeferred = true;
+    show('residual'); saveDraft(); show('home');
+    modal('다음 시간에 만나요', '돌아보기까지 저장했어요. 다음 시간에 내 공부방에서 [이어서 하기]를 누르면 혼자 풀어보기부터 시작해요.');
+  });
   $('#res-finish').addEventListener('click', ()=>{
     session.residual.journal = anonymize((session.residual.journal||'').trim());
     commitSession(); modal('저장했어요','돌아보기와 혼자 풀어보기 결과를 내 공부방에 저장했어요.'); show('home');
