@@ -533,6 +533,190 @@
   .fixed-role-col p{font-size:12.5px;color:var(--ink-2);line-height:1.55;margin:0}
 
   [hidden]{display:none!important}
+  /* =====================================================================
+     v28 차분한 미니멀 테마 — 설계원리 요소는 그대로 두고 겉모양만 바꾼다.
+     원칙: 포인트 색 하나(파랑), 회색 단계로 위계, 테두리·이모지·알약 버튼 최소화,
+     "지금 해야 할 일"만 진하게. 진행 표시는 상단 한 곳으로 모은다.
+     ===================================================================== */
+  :root{
+    --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f4f6f8;
+    --line:#eceef1; --line-strong:#dde1e6;
+    --ink:#191f28; --ink-2:#4e5968; --muted:#8b95a1;
+    --accent:#3182f6; --accent-ink:#1b64da; --accent-wash:#edf4ff;
+    --primary:#3182f6; --on-primary:#ffffff;
+    --warn:#d9480f; --warn-wash:#fff4ec;
+    --info:#3182f6; --info-wash:#f2f6fd;
+    --teal:#3182f6; --teal-ink:#1b64da; --teal-wash:#ffffff;
+    --amber-wash:#ffffff; --amber-ink:#191f28;
+    --purple-wash:#ffffff; --purple-ink:#191f28; --pink-wash:#ffffff; --pink-ink:#191f28;
+    --radius:18px; --radius-sm:12px; --radius-xs:10px;
+    --shadow:0 0 0 1px var(--line);
+  }
+  body{background:var(--bg);letter-spacing:-.005em}
+  ::selection{background:#d6e6ff}
+
+  /* 머리 */
+  .topbar{padding:12px 2px;background:rgba(246,247,249,.92);-webkit-backdrop-filter:saturate(1.4) blur(10px);backdrop-filter:saturate(1.4) blur(10px)}
+  .brand{font-weight:700;font-size:15px}
+  .brand small{display:none}
+  .brand .dot{width:20px;height:20px;border-radius:6px;background:var(--accent)}
+  .icon-btn{border:0;background:transparent;color:var(--ink-2);font-weight:600;height:32px}
+  .icon-btn:hover{background:#e9ecf0;color:var(--ink)}
+  .who{font-weight:600;color:var(--muted)}
+
+  /* 화면 제목 */
+  .rail{border-left:0;padding-left:0;margin:6px 0 18px}
+  .eyebrow{letter-spacing:0;text-transform:none;font-size:13px;font-weight:700;color:var(--accent-ink)}
+  .headline{font-size:25px;font-weight:800;letter-spacing:-.03em;margin-top:6px}
+  .subhead{color:var(--muted);font-size:14px;margin-top:8px}
+  .subhead b{color:var(--ink-2);font-weight:700}
+  [data-screen="chat"] .rail{display:none}
+
+  /* 카드·입력 */
+  .card{border:0;box-shadow:var(--shadow);border-radius:var(--radius)}
+  .field-label{font-weight:700}
+  .input,.textarea,.select{background:#fff;border:1px solid var(--line-strong);border-radius:12px}
+  .input:focus,.textarea:focus,.select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #dbe8fd}
+  .callout{border:0;border-radius:12px;background:var(--surface-2);color:var(--ink-2)}
+  .callout.warn{background:var(--warn-wash);color:#b3400d}
+  .callout.info{background:var(--info-wash);color:var(--ink-2)}
+  .callout.accent{background:var(--accent-wash);color:var(--accent-ink)}
+  .choice{border-color:var(--line-strong);font-weight:600}
+  .choice.is-selected{box-shadow:none;border-color:var(--accent);background:var(--accent-wash);color:var(--accent-ink)}
+  .chip{font-weight:600}
+  .chip.is-selected{background:var(--accent-wash);border-color:var(--accent);color:var(--accent-ink)}
+  .side-more{border-radius:14px;background:var(--surface-2);padding:12px 14px}
+  .side-more summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2);list-style:none}
+  .side-more summary::-webkit-details-marker{display:none}
+  .side-more summary::before{content:"▸ ";color:var(--muted)}
+  .side-more[open] summary::before{content:"▾ "}
+  .side-more .box{background:#fff}
+  details#st-manual{border:0;background:var(--surface-2);border-radius:12px}
+
+  /* 버튼 */
+  .btn{border-radius:12px;font-weight:700;border-color:var(--line-strong)}
+  .btn-primary,.btn-accent{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn-primary:hover,.btn-accent:hover{background:var(--accent-ink);border-color:var(--accent-ink)}
+  .btn-primary:disabled,.btn-accent:disabled{background:#c9d2de;border-color:#c9d2de;opacity:1}
+  .btn-ghost{color:var(--muted)}
+
+  /* 상단 단계 표시(하나만) */
+  .process-bar{margin:0 2px 14px;padding:10px 14px;border:0;box-shadow:var(--shadow);border-radius:14px;background:#fff}
+  .pb-dot{width:22px;height:22px;font-size:11.5px;background:var(--surface-2)}
+  .pb-step.done .pb-dot{background:var(--accent-wash);color:var(--accent-ink)}
+  .pb-step.active .pb-dot{background:var(--accent)}
+  .pb-label b{font-weight:700}
+  .pb-step:not(.active) .pb-label small{display:none}
+  .pb-step.active{flex:2.4}
+  .pb-label small{font-size:11.5px;color:var(--ink-2)}
+  .pb-line{background:var(--line-strong)}
+  .pb-line.done{background:var(--accent)}
+
+  /* 대화 화면: 화면 높이에 맞춘 한 덩어리, 메시지만 스크롤 */
+  .chatwrap{border:0;box-shadow:var(--shadow);height:calc(100dvh - 150px);min-height:460px}
+  .chat-head{background:#fff;padding:10px 16px;flex-wrap:wrap;gap:8px 12px}
+  .chat-head .meta{font-size:13px;color:var(--ink-2);font-weight:600}
+  .head-right{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .phase-pill,.phase-pill.explore{background:var(--accent-wash);color:var(--accent-ink);font-weight:700;letter-spacing:0;font-size:12px;padding:4px 10px}
+  .support-mini{display:inline-flex!important;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ink-2);background:transparent;padding:0 4px;margin:0}
+  .support-mini:empty{display:none!important}
+  .support-mini .dots{display:inline-flex;gap:3px}
+  .support-mini .dots i{display:block;width:7px;height:7px;border-radius:50%;background:var(--line-strong)}
+  .support-mini .dots i.on{background:var(--accent)}
+  .support-badge{background:var(--surface-2)!important;border:0!important;color:var(--ink-2)!important;font-weight:600;padding:4px 10px}
+  .head-link{border:0;background:none;color:var(--accent-ink);font-size:12.5px;font-weight:700;padding:4px 6px;border-radius:8px;cursor:pointer;white-space:nowrap}
+  .head-link:hover{background:var(--accent-wash)}
+  #chat-finish{padding:6px 12px;font-size:12.5px}
+  .goal-strip{padding:8px 16px 10px;background:#fff;gap:2px;border-bottom:1px solid var(--line)}
+  .gs-row{flex-wrap:nowrap;gap:8px;align-items:center;font-size:13px}
+  .gs-row .gs-ic{display:none}
+  .gs-row b{text-transform:none;letter-spacing:0;font-size:12px;color:var(--muted);font-weight:600;flex:none}
+  #gs-std,#gs-goal,#gs-extra{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-weight:600}
+  #scaffold-wrap,#proc-wrap{display:none!important}
+  .stream{max-height:none;flex:1;min-height:0;padding:20px 22px;gap:14px;background:#fff}
+  .msg{max-width:84%}
+  .msg .av{display:none!important}
+  .msg > div{min-width:0}
+  .stream{overflow-x:hidden}
+  .strat-cards{grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr));max-width:100%}
+  .msg.me > div:not(.av){display:flex;flex-direction:column;align-items:flex-end}
+  .struct-offer-btn{background:#fff!important;color:var(--accent-ink)!important;border-color:var(--accent)!important}
+  .bubble{font-size:15px;line-height:1.65}
+  .msg.ai .bubble{background:var(--surface-2);border:0;border-radius:4px 18px 18px 18px}
+  .msg.me .bubble{background:var(--accent);color:#fff;border-radius:18px 18px 4px 18px}
+  .msg.note .bubble{background:transparent;border:0;color:var(--muted);font-weight:500;font-size:12.5px}
+  .msg-acts{display:flex;flex-wrap:wrap;gap:2px;margin-top:4px}
+  .msg-act{border:0;background:none;color:var(--muted);font-size:12px;font-weight:600;padding:4px 8px;border-radius:8px;cursor:pointer;line-height:1.4}
+  .msg-act:hover{background:var(--surface-2);color:var(--ink)}
+  .msg-act.judge-trigger{border:0;display:inline-block}
+  .msg-act.judge-trigger.st-accept{background:#e9f7ef;color:#12803f}
+  .msg-act.judge-trigger.st-hold{background:#fff5e2;color:#9a5b00}
+  .msg-act.judge-trigger.st-comment{background:var(--accent-wash);color:var(--accent-ink)}
+  .explain-box,.comment-pill{background:var(--surface-2);border:0;color:var(--ink-2);border-radius:12px}
+  .meta-score-card,.checkpoint-card{background:#fff!important;border:1px solid var(--line)!important;border-radius:16px;max-width:440px}
+  .msc-title,.checkpoint-card .msc-title{color:var(--ink)!important;font-size:13px;letter-spacing:0}
+  .msc-row b{color:var(--ink)}
+  .msc-row .bar{background:var(--surface-2)}
+  .msc-row .bar>i{background:var(--accent)}
+  .msc-note{border-top:1px solid var(--line)}
+  .task-card{border:1px solid var(--line);border-style:solid;background:#fff;border-radius:14px;padding:12px 14px;font-size:13.5px}
+  .task-card .tc-head{color:var(--ink)}
+  .task-card.eval{background:var(--surface-2);border-color:transparent}
+  .understand-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(170px,100%),1fr));max-width:560px}
+  .u-chip{border-color:var(--line-strong);font-weight:600}
+  .u-chip.is-selected{border-color:var(--accent);background:var(--accent-wash);color:var(--accent-ink)}
+  .strat-card{border-color:var(--line-strong);border-radius:14px}
+  .strat-card.is-selected{box-shadow:none;border-color:var(--accent);background:var(--accent-wash)}
+  .strat-card .sc-badge{background:var(--surface-2);border:0;color:var(--ink-2);font-weight:700}
+  .strat-card .sc-badge.fit{background:var(--accent-wash);color:var(--accent-ink)}
+  .strat-card .sc-when{background:var(--surface-2);color:var(--ink-2)}
+  .strat-card .sc-tips{border-top:1px solid var(--line)}
+  .strat-card .sc-tips li::before{color:var(--muted)}
+  .compose{background:#fff;padding:10px 14px 12px;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px}
+  .compose > .row,.compose > .prep-next-btn,.compose > #math-symbols{flex-basis:100%}
+  .compose > .quick-actions{display:contents}
+  .compose > .quick-actions[hidden]{display:none}
+  .stuck,.quick-actions button,.tools-btn{border:1px solid var(--line-strong)!important;background:#fff;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;color:var(--ink-2);height:auto;margin:0}
+  .stuck:hover,.quick-actions button:hover,.tools-btn:hover{border-color:var(--accent)!important;color:var(--accent-ink);background:var(--accent-wash)}
+  .compose .input{border-radius:14px}
+  #chat-send{border-radius:14px}
+  .prep-next-btn{background:#fff;border:1px solid var(--accent);border-radius:14px;padding:10px 12px}
+  .prep-next-btn:hover{background:var(--accent-wash)}
+  .prep-next-btn .pn-ic{display:none}
+  .prep-next-btn .pn-text b{color:var(--ink)}
+  .prep-next-btn .pn-arrow{background:var(--accent)}
+  .cycle-wrap{background:transparent}
+  .cycle-node{border-color:var(--line-strong);font-weight:600}
+  .cycle-node.now{background:var(--accent);border-color:var(--accent)}
+  .cycle-node.done{background:var(--accent-wash);border-color:transparent;color:var(--accent-ink)}
+  .cycle-title{letter-spacing:0;font-weight:700}
+
+  /* 돌아보기·결과·내 공부방 */
+  .tl-card{border-color:var(--line);border-radius:14px}
+  .tl-card .role{text-transform:none;letter-spacing:0;font-weight:700}
+  .tl-tags button{border-color:var(--line-strong);border-radius:8px;font-weight:600}
+  .tl-tags button.on{border-color:var(--accent);background:var(--accent-wash);color:var(--accent-ink)}
+  .paper{border-color:var(--line);border-radius:16px}
+  .paper .tab{background:#fff;letter-spacing:0;color:var(--muted);font-weight:700}
+  .kv{border-bottom:1px solid var(--line)}
+  .draft-banner{border:1px solid var(--accent);background:var(--accent-wash)}
+  .stat-tile,.stat-tile.c-green,.stat-tile.c-purple,.stat-tile.c-amber,.stat-tile.c-pink{background:#fff;box-shadow:var(--shadow);color:var(--ink)}
+  .stat-tile .num{color:var(--ink)}
+  .tb-slide-row{background:#fff;border-color:var(--line)}
+  .starters button{border-style:solid;border-color:var(--line-strong)}
+  .req-tag{font-weight:700;border:0;background:var(--warn-wash);color:#b3400d}
+  .gate-hint{border:0;background:var(--warn-wash);color:#b3400d}
+
+  @media(max-width:700px){
+    .chatwrap{height:calc(100dvh - 130px);min-height:420px}
+    .stream{padding:14px}
+    .msg{max-width:94%}
+    .process-bar{padding:8px 10px}
+    .pb-step:not(.active) .pb-label{display:none}
+    .support-badge{max-width:62vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block!important}
+    .support-badge[hidden]{display:none!important}
+    .chat-head{padding:8px 12px}
+  }
 </style>
 </head>
 <body>
@@ -758,7 +942,6 @@
     <div class="rail">
       <div class="eyebrow">AI와 이야기하기</div>
       <h1 class="headline">이야기하면서 같이 알아가요</h1>
-      <p class="subhead">먼저 AI가 "지금 뭘 알고 있어?"를 물어봐요. 그다음 공부 방법을 하나 골라서 본격적으로 알아가요. AI가 한 말마다 <b>좋아요·잘 모르겠어요·다른 생각</b>을 남길 수 있고, 막히면 <b>"막혔어요"</b>를 눌러요.</p>
     </div>
     <div class="chatwrap">
       <div class="chat-head">
@@ -766,17 +949,19 @@
           <span class="phase-pill" id="phase-pill">1단계 · 계획하기</span>
           <span id="chat-std">오늘 배울 내용</span>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <span class="support-badge" id="strategy-badge" style="background:var(--accent-wash);border-color:#cdeadd;color:var(--accent-ink)" title="내가 고른 공부 방법이에요 — 여러 개 고를 수 있고, 막히면 바꿔볼 수 있어요." hidden>
+        <div class="head-right">
+          <span class="support-mini" id="support-mini" title="AI 도움 크기 — 잘 이해하면 AI가 줄여 보자고 제안하고, 줄일지는 내가 정해요"></span>
+          <span class="support-badge" id="strategy-badge" title="내가 고른 공부 방법이에요 — 여러 개 고를 수 있고, 막히면 바꿔볼 수 있어요." hidden>
             방법 <span id="strategy-badge-text">-</span>
           </span>
-          <button class="icon-btn" id="btn-change-strategy" style="padding:0 10px;height:28px;font-size:11.5px" hidden>🔄 방법 바꾸기</button>
+          <button class="head-link" id="btn-change-strategy" hidden>바꾸기</button>
+          <button class="btn btn-sm" id="chat-finish" hidden>이야기 끝내기</button>
         </div>
       </div>
       <div class="goal-strip" id="goal-strip">
-        <div class="gs-row"><span class="gs-ic">🎯</span><b>오늘 배울 것</b><span id="gs-std"></span><button type="button" class="icon-btn" id="gs-source" style="height:24px;padding:0 8px;font-size:11px;margin-left:auto" title="AI가 참고하는 교육과정 근거 보기">📚 근거 자료</button></div>
-        <div class="gs-row" id="gs-extra-row" hidden><span class="gs-ic">🔗</span><b>함께 다루는 것</b><span id="gs-extra"></span></div>
-        <div class="gs-row" id="gs-goal-row" hidden><span class="gs-ic">🧭</span><b>오늘 목표</b><span id="gs-goal"></span></div>
+        <div class="gs-row"><b>오늘 배울 것</b><span id="gs-std"></span><button type="button" class="head-link" id="gs-source" title="AI가 참고하는 교육과정 근거 보기">근거 자료</button></div>
+        <div class="gs-row" id="gs-extra-row" hidden><b>함께 다루는 것</b><span id="gs-extra"></span></div>
+        <div class="gs-row" id="gs-goal-row" hidden><b>오늘 목표</b><span id="gs-goal"></span></div>
       </div>
       <div class="scaffold-wrap" id="scaffold-wrap">
         <div class="scaffold-title">AI 도움 크기 <span class="scaffold-hint">— 잘 이해할수록 자동으로 줄어들고, 다시 늘지는 않아요</span></div>
@@ -801,11 +986,11 @@
           <span class="pn-text"><b id="pn-title">다음으로 넘어갈까요?</b><small id="pn-desc">지금까지 충분히 이야기했다면 눌러요. 더 이야기해도 괜찮아요.</small></span>
           <span class="pn-arrow">다음 →</span>
         </button>
-        <button class="stuck" id="btn-stuck" hidden>🧭 막혔어요 (같이 점검해 주세요)</button>
+        <button class="stuck" id="btn-stuck" hidden>막혔어요</button>
         <div class="quick-actions" id="quick-actions" hidden></div>
         <!-- 요청사항: "수식을 제대로 인식 못한다" — 손글씨 인식(Vision)이 분수·지수·근호 같은
              기호를 놓칠 수 있어, 타이핑으로 정확하게 넣을 수 있는 수식 기호 버튼을 보조로 둔다. -->
-        <button type="button" class="icon-btn tools-btn" id="btn-tools">➕ 수식 기호</button>
+        <button type="button" class="stuck tools-btn" id="btn-tools">수식 기호</button>
         <div class="quick-actions" id="math-symbols" hidden>
           <button type="button" class="sym-btn" data-sym="/">／(분수)</button>
           <button type="button" class="sym-btn" data-sym="^">^(지수)</button>
@@ -821,10 +1006,6 @@
           <button class="btn btn-primary" id="chat-send">보내기</button>
         </div>
       </div>
-    </div>
-    <div class="nav">
-      <span class="filler"></span>
-      <button class="btn btn-accent" id="chat-finish" hidden>이야기 끝내기 → 돌아보기</button>
     </div>
   </section>
 
@@ -863,8 +1044,11 @@
             </div>
           </div>
           <!-- 요청사항(3번째 피드백) 8: 대화 중 개별로 했던 "판단하기"를 한번에 묶어 다시 볼 수 있게 -->
+          <details class="side-more">
+          <summary>더 보기 — 내 판단·만든 자료·남긴 코멘트</summary>
+          <div class="stack" style="margin-top:12px">
           <div class="box">
-            <h4>👍🤔💭 AI 말 판단 모아보기</h4>
+            <h4>AI 말 판단 모아보기</h4>
             <div id="judge-collected" class="stack" style="gap:6px"></div>
           </div>
           <!-- 방법을 바꿨거나 자료를 만든 적이 있을 때만 보여준다(없으면 박스 자체를 숨김 —
@@ -881,6 +1065,8 @@
             <h4 style="font-size:13px;font-weight:800;margin-bottom:10px">내가 "다른 생각"으로 남긴 코멘트</h4>
             <div id="reflect-comments" class="stack" style="gap:8px"></div>
           </div>
+          </div>
+          </details>
         </div>
       </div>
       <div>
@@ -1431,14 +1617,14 @@ function evalFeedbackInstr(spec, ev){
 이 진단에 근거해 피드백하라: (1) 학습자가 실제로 쓴 낱말을 그대로 짚으며 잘한 점 1가지, (2) 빠지거나 어긋난 점이 있으면 1가지를 "내가 보기엔 ~ 부분이 ~해서 헷갈린 것 같아"처럼 이유와 함께 알려주되 정답을 통째로 불러주지 말고 고칠 단서만 줘라(착오 유형을 쉬운 말로), ${ev.strategyUsed?'':'(3) 답만 쓰고 '+(strat?strat.label:'고른 방법')+' 방법은 아직 안 썼다는 점도 짚어라, '}마지막으로 "이 진단에 동의해? 그리고 ${strat?strat.label:'이 방법'}이 이번에 도움이 됐어?"처럼 학습자가 스스로 판단하게 1개만 물어라. 새 문제나 다음 과업은 절대 덧붙이지 마라(다음 과업은 시스템이 따로 낸다). 진단을 판결처럼 단정하지 말고, 학습자가 반박할 수 있게 열어 둬라. 5문장 이내.`;
 }
 function taskCardHTML(spec){
-  return `<div class="task-card"><div class="tc-head">🎯 이렇게 하면 성공이에요</div><ul>${spec.criteria.map(c=>`<li>${esc(c)}</li>`).join('')}</ul></div>`;
+  return `<div class="task-card"><div class="tc-head">이렇게 하면 성공이에요</div><ul>${spec.criteria.map(c=>`<li>${esc(c)}</li>`).join('')}</ul></div>`;
 }
 function evalCardHTML(ev){
   const lv = ['아직 많이 남았어요','일부 해냈어요','대부분 해냈어요'][ev.level];
-  return `<div class="task-card eval"><div class="tc-head">🔎 AI가 본 내 답 — ${lv} <span class="tc-sub">(AI의 생각이에요. 아니라고 생각하면 "판단하기"로 알려줘요)</span></div>
-    ${ev.met.length?`<div class="tc-row"><b>⭐ 잘한 점</b> ${ev.met.map(esc).join(' · ')}</div>`:''}
-    ${ev.missing.length?`<div class="tc-row"><b>🔧 더 해볼 점</b> ${ev.missing.map(esc).join(' · ')}</div>`:''}
-    ${ev.errorType && ev.errorType!=='특별한 착오 없음'?`<div class="tc-row err"><b>🤔 헷갈린 곳</b> ${esc(ev.errorType)} (AI 짐작)</div>`:''}
+  return `<div class="task-card eval"><div class="tc-head">AI가 본 내 답 — ${lv} <span class="tc-sub">(AI의 생각이에요. 아니라고 생각하면 "판단하기"로 알려줘요)</span></div>
+    ${ev.met.length?`<div class="tc-row"><b>잘한 점</b> ${ev.met.map(esc).join(' · ')}</div>`:''}
+    ${ev.missing.length?`<div class="tc-row"><b>더 해볼 점</b> ${ev.missing.map(esc).join(' · ')}</div>`:''}
+    ${ev.errorType && ev.errorType!=='특별한 착오 없음'?`<div class="tc-row err"><b>헷갈린 곳</b> ${esc(ev.errorType)} (AI 짐작)</div>`:''}
   </div>`;
 }
 function isAnswerRequest(v){
@@ -2508,6 +2694,9 @@ function renderScaffoldStrip(){
 }
 function paintSupport(){
   renderScaffoldStrip();
+  const sm = $('#support-mini');
+  if(sm && session){ const lv = { high:[3,'많이'], mid:[2,'보통'], low:[1,'조금'] }[session.support] || [3,'많이'];
+    sm.innerHTML = `AI 도움 <span class="dots">${[1,2,3].map(i=>`<i class="${i<=lv[0]?'on':''}"></i>`).join('')}</span> ${lv[1]}`; }
 }
 function paintPhase(){
   renderGoalStrip();
@@ -2535,7 +2724,7 @@ function paintPhase(){
   { // (사용성) 언제 끝내면 되는지: 고른 방법을 모두 해 봤으면 버튼을 강조하고 문구로 알려 준다
     const done = session.strategies && session.strategies.length && session.strategies.every(id=>(session.stratDone||{})[id] || ((session.stratRounds||{})[id]||0) >= 2);
     const fb = $('#chat-finish');
-    fb.textContent = done ? '✅ 고른 방법을 다 해 봤어요! 이야기 끝내기 → 돌아보기' : '이야기 끝내기 → 돌아보기';
+    fb.textContent = done ? '다 해 봤어요 · 돌아보기 →' : '이야기 끝내기';
     fb.classList.toggle('btn-primary', !!done);
   }
   $('#proc-sub-wrap').hidden = session.phase!=='explore' || !session.cycleStarted;
@@ -2630,6 +2819,7 @@ function renderCycleStrip(){
     const arrow = i<CYCLE_LABELS.length-1 ? '<span class="cycle-arrow">→</span>' : '<span class="cycle-arrow">↻</span>';
     return `<span class="cycle-node ${c.k===now?'now':''}">${esc(label)}</span>${arrow}`;
   }).join('');
+  paintProcessBar();
 }
 /* ===== 공부 방법별 구조화 산출물(표/마인드맵/비교/드릴/체크리스트) 빠른 버튼: 고른 방법 전체의 합집합 ===== */
 function currentStructs(){
@@ -2644,6 +2834,15 @@ function renderQuickActions(){
   box.innerHTML = list.map(a=>`<button data-type="${a.type}" data-label="${esc(a.label)}">${a.label}</button>`).join('');
 }
 /* ===== 상단 진행 단계: 대화 시작 전 - 대화 중 - 대화 이후 ===== */
+// 해 보기(반복) 중에는 상단 단계 표시에 "지금 순환의 어디쯤인지"를 한 줄로 보여 준다
+// (예전엔 대화창 안에 별도 띠 두 줄로 보여 줘서 진행 표시가 세 겹이었다).
+function cycleNowText(){
+  if(!session) return '';
+  const strat = currentApplyStrat();
+  const c = CYCLE_LABELS.find(x=>x.k===(session.cycleNow||'ask'));
+  const now = c ? (c.k==='apply' && strat ? `${strat.label}로 해 보기` : c.t) : '';
+  return `지금: ${now}`;
+}
 function paintProcessBar(){
   const bar = $('#process-bar'); if(!bar) return;
   const scr = document.querySelector('.screen.is-active')?.dataset.screen;
@@ -2659,7 +2858,7 @@ function paintProcessBar(){
   const backDesc = scr==='residual' ? 'AI 없이 혼자 풀어보기' : (session && session.reflect && session.reflect.step==='prompt') ? '내 질문 돌아보기' : '누가 이끌었나 돌아보기';
   const steps = [
     { t:'계획하기', d: stage===0 ? planDesc : '배울 것·내 상태·방법 정하기', why:'무엇을, 어떻게 공부할지 스스로 정해요' },
-    { t:'해 보기', d: '고른 방법대로 해 보고 점검하기', why:'해 보고, AI 의견을 내가 판단해요' },
+    { t:'해 보기', d: stage===1 ? cycleNowText() : '고른 방법대로 해 보고 점검하기', why:'해 보고, AI 의견을 내가 판단해요' },
     { t:'돌아보기', d: stage===2 ? backDesc : '어떻게 배웠는지 돌아보기', why:'AI 없이 얼마나 남았는지 확인해요' }
   ];
   bar.innerHTML = steps.map((s,i)=>{
@@ -2731,7 +2930,7 @@ function renderStream(){
         const items = session.prior.items||[];
         if(t.answered){
           box.insertAdjacentHTML('beforeend', `<div class="msg note"><div class="meta-score-card">
-            <div class="msc-title">📋 가. 아는 것 확인 결과 (참고용 · 맞다·틀리다가 아니에요)</div>
+            <div class="msc-title">아는 것 확인 결과 (참고용 · 맞다·틀리다가 아니에요)</div>
             ${items.map((it,i)=>`<div class="msc-row"><span>${i+1}. ${esc(it.tag)}</span><span class="bar"><i style="width:${it.score||0}%"></i></span><b>${it.score!=null?it.score+'점':'-'}</b></div>`).join('')}
             ${items.map((it,i)=> it.note ? `<div class="msc-note" style="font-size:12px">${i+1}. ${esc(it.note)}</div>` : '').join('')}
             ${session.prior.diagFeedback ? `<div class="msc-note">${esc(session.prior.diagFeedback)}</div>` : ''}
@@ -2741,7 +2940,7 @@ function renderStream(){
           box.insertAdjacentHTML('beforeend', `<div class="msg note"><div class="bubble">문항을 만드는 중…</div></div>`);
         } else {
           box.insertAdjacentHTML('beforeend', `<div class="msg note"><div class="paper">
-            <div class="tab">🌱 가. 아는 것 확인하기 — 시험이 아니에요, 아는 만큼만 편하게 적어요</div>
+            <div class="tab">아는 것 확인하기 — 시험이 아니에요, 아는 만큼만 편하게 적어요</div>
             <div class="body stack">
               ${items.map((it,i)=>aqFieldHTML(it,i)).join('')}
             </div>
@@ -2758,7 +2957,7 @@ function renderStream(){
           box.insertAdjacentHTML('beforeend', `<div class="msg note"><div class="bubble">🪜 ${esc(msg)}</div></div>`);
         } else {
           box.insertAdjacentHTML('beforeend', `<div class="msg note"><div class="meta-score-card">
-            <div class="msc-title">🪜 AI 도움을 줄여볼까요?</div>
+            <div class="msc-title">AI 도움을 줄여볼까요?</div>
             <p style="font-size:13px;color:var(--ink);margin:2px 0 8px">요즘 계속 잘 이해하고 있는 것 같아요. 힌트를 지금보다 적게 받아볼래요? 정하는 건 나예요.</p>
             <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-sm btn-primary fade-accept">줄여볼래요</button><button type="button" class="btn btn-sm btn-ghost fade-decline">이번엔 그대로 둘래요</button></div>
           </div></div>`);
@@ -2768,7 +2967,7 @@ function renderStream(){
       if(t.kind==='meta-score' && t.meta){
         const row = (label,val)=>`<div class="msc-row"><span>${label}</span><span class="bar"><i style="width:${val}%"></i></span><b>${val}점</b></div>`;
         box.insertAdjacentHTML('beforeend', `<div class="msg note"><div class="meta-score-card">
-          <div class="msc-title">🧠 나. 스스로 점검 결과 (참고용 · 맞다·틀리다가 아니에요)</div>
+          <div class="msc-title">스스로 점검 결과 (참고용 · 맞다·틀리다가 아니에요)</div>
           ${session.meta.usualMethod ? `<div class="msc-note"><b>평소 공부법:</b> ${esc(session.meta.usualMethod)}</div>` : ''}
           ${row('이해 점검(헷갈리는 곳 짚기)', t.meta.understand)}
           ${row('전략 지식(방법과 이유)', t.meta.strategy)}
@@ -2790,14 +2989,15 @@ function renderStream(){
       if(t.evalId){ const sp = taskById(t.evalTaskId); const ev = sp && sp.evals.find(e=>e.id===t.evalId); if(ev) extra += evalCardHTML(ev); }
       const j=t.judge;
       const stCls = j==='accept'?'st-accept':j==='hold'?'st-hold':j==='comment'?'st-comment':'';
-      const label = j==='accept'?'👍 좋아요':j==='hold'?'🤔 잘 모르겠어요':j==='comment'?'💭 다른 생각':'🔍 판단하기';
-      extra += `<button type="button" class="judge-trigger ${stCls}" data-id="${t.id}">${label}</button>`;
-      if(session.ctx.subject==='영어' && window.speechSynthesis && t.text) extra += `<button type="button" class="icon-btn speak-btn" data-id="${t.id}" title="영어 발음으로 들어보기" style="padding:0 10px;height:26px;font-size:11px;margin-left:6px">🔊 들어보기</button>`;
+      const label = j==='accept'?'좋아요':j==='hold'?'잘 모르겠어요':j==='comment'?'다른 생각':'이 말 판단하기';
+      extra += `<div class="msg-acts"><button type="button" class="msg-act judge-trigger ${stCls}" data-id="${t.id}">${label}</button>`;
+      if(session.ctx.subject==='영어' && window.speechSynthesis && t.text) extra += `<button type="button" class="msg-act speak-btn" data-id="${t.id}" title="영어 발음으로 들어보기">들어보기</button>`;
       // 원리10 [대화 중: 대화 전반 지침] 3: "학습자가 AI 챗봇과 대화하는 과정 전반의 맥락에서"
       // 산출 과정을 제공하라고 돼 있다 — "판단하기"(위 judge-trigger)가 phase 구분 없이 모든
       // AI 말풍선에 뜨는 것과 같은 범위여야 정합성이 맞다(이전엔 explore로만 좁혀 놨던 것을 넓힘).
-      if(!t.structured && !t.kind && t.text) extra += `<button type="button" class="icon-btn explain-btn" data-id="${t.id}" title="이 말이 왜 나왔는지 설명 보기" style="padding:0 10px;height:26px;font-size:11px;margin-left:6px">🧭 왜 이렇게 말했어?</button>`;
-      if(t.explain && t.explainOpen) extra += `<div class="explain-box">🧭 ${esc(t.explain)}</div>`;
+      if(!t.structured && !t.kind && t.text) extra += `<button type="button" class="msg-act explain-btn" data-id="${t.id}" title="이 말이 왜 나왔는지 설명 보기">왜 이렇게 말했어?</button>`;
+      extra += `</div>`;
+      if(t.explain && t.explainOpen) extra += `<div class="explain-box">${esc(t.explain)}</div>`;
       if(j==='comment' && (t.comment||'').trim()) extra += `<div class="comment-pill"><b>내 다른 생각:</b> ${esc(t.comment)}</div>`;
       if(t.kind==='prior-pick') extra += priorPickHTML();
       if(t.kind==='strategy-pick') extra += strategyPickHTML(pendingStrategyPick);
@@ -2813,7 +3013,7 @@ function renderStream(){
   });
   { const ais = box.querySelectorAll('.msg.ai'); if(ais.length) ais[ais.length-1].classList.add('is-latest'); }
   box.scrollTop = box.scrollHeight;
-  if(session.phase==='explore' && session.cycleStarted){ const fb = $('#chat-finish'); if(fb){ const done = (session.strategies||[]).length && session.strategies.every(id=>(session.stratDone||{})[id] || ((session.stratRounds||{})[id]||0) >= 2); fb.textContent = done ? '✅ 고른 방법을 다 해 봤어요! 이야기 끝내기 → 돌아보기' : '이야기 끝내기 → 돌아보기'; fb.classList.toggle('btn-primary', !!done); } }
+  if(session.phase==='explore' && session.cycleStarted){ const fb = $('#chat-finish'); if(fb){ const done = (session.strategies||[]).length && session.strategies.every(id=>(session.stratDone||{})[id] || ((session.stratRounds||{})[id]||0) >= 2); fb.textContent = done ? '다 해 봤어요 · 돌아보기 →' : '이야기 끝내기'; fb.classList.toggle('btn-primary', !!done); } }
   saveDraft();
 }
 const UNDERSTAND_LEVELS = [
@@ -2886,17 +3086,17 @@ function levelSummaryHTML(){
   if(session.prior.diagScore!=null){
     const sub = session.prior.sub || {};
     // (개선) 지침 6-2: 활성도·이해도·적용력을 따로 보여준다(하나의 평균만 보이던 것 개선).
-    if(sub.activate!=null) rows.push(['가. 떠올리기(활성도)', sub.activate]);
-    if(sub.understand!=null) rows.push(['가. 설명하기(이해도)', sub.understand]);
-    if(sub.apply!=null) rows.push(['가. 적용하기(적용력)', sub.apply]);
-    if(sub.activate==null && sub.understand==null && sub.apply==null) rows.push(['가. 아는 것 확인', session.prior.diagScore]);
+    if(sub.activate!=null) rows.push(['아는 것 · 떠올리기', sub.activate]);
+    if(sub.understand!=null) rows.push(['아는 것 · 설명하기', sub.understand]);
+    if(sub.apply!=null) rows.push(['아는 것 · 적용하기', sub.apply]);
+    if(sub.activate==null && sub.understand==null && sub.apply==null) rows.push(['아는 것 확인', session.prior.diagScore]);
     scores.activate = session.prior.diagScore;
   }
   if(session.meta.scoreDetail){
     const d = session.meta.scoreDetail;
-    rows.push(['나. 이해 점검', d.understand]); scores.understand = d.understand;
-    rows.push(['나. 전략 지식', d.strategy]); scores.strategy = d.strategy;
-    rows.push(['나. 연결 짓기', d.connect]); scores.connect = d.connect;
+    rows.push(['스스로 점검 · 이해', d.understand]); scores.understand = d.understand;
+    rows.push(['스스로 점검 · 전략', d.strategy]); scores.strategy = d.strategy;
+    rows.push(['스스로 점검 · 연결', d.connect]); scores.connect = d.connect;
   }
   if(!rows.length) return '';
   const sentence = (() => {
