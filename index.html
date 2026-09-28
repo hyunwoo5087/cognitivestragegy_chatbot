@@ -279,7 +279,7 @@
 
   .strat-row{display:flex;align-items:center;gap:10px;font-size:13px;margin:9px 0}
   .strat-row .emoji{font-size:18px;width:24px;text-align:center;flex:none}
-  .strat-row .lab{width:76px;flex:none;color:var(--ink-2);font-weight:700}
+  .strat-row .lab{width:124px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-2);font-weight:700}
   .strat-row .track{flex:1;height:11px;background:#eef1f3;border-radius:999px;overflow:hidden}
   .strat-row .track > i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),#5fd6a1)}
   .strat-row .num{width:26px;text-align:right;font-weight:800;color:var(--ink)}
@@ -396,6 +396,17 @@
   .sd-turn .r{font-weight:700;font-size:11px;color:var(--muted);margin-bottom:2px}
   .modal-quote{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--ink-2);margin:12px 0;max-height:160px;overflow-y:auto;white-space:pre-wrap}
 
+  /* (개선) 내 공부방: 나의 성장 탭 */
+  .stat-row-3{grid-template-columns:repeat(3,1fr)}
+  .growth-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .growth-tabs .gt{border:1px solid var(--line-strong);background:var(--surface);border-radius:999px;padding:7px 14px;font-weight:700;font-size:13px;color:var(--ink-2);cursor:pointer}
+  .growth-tabs .gt.on{background:var(--accent-wash);border-color:var(--accent);color:var(--accent-ink)}
+  .gp-read{font-size:12.5px;color:var(--muted);margin:0 0 6px;line-height:1.55}
+  .gp-sum{font-size:14px;font-weight:700;margin:0 0 12px;color:var(--ink)}
+  .gp-sum:empty{display:none}
+  .gp-empty{padding:18px;text-align:center;color:var(--muted);font-size:13px;border:1px dashed var(--line-strong);border-radius:10px;margin-bottom:12px}
+  .gp-sub{font-size:13px;margin:16px 0 6px;color:var(--ink-2)}
+  @media(max-width:620px){.stat-row-3{grid-template-columns:repeat(3,1fr)} .stat-row-3 .stat-tile .num{font-size:20px}}
   /* (사용성) 못 넘어갈 때 이유 안내 */
   .gate-hint{font-size:12.5px;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:6px 10px;margin-top:8px;cursor:pointer}
   .gate-hint:empty{display:none}
@@ -572,73 +583,67 @@
       <p class="subhead" id="home-summary-line">공부할 때마다 대화·공부 방법·스스로 답한 내용이 여기에 쌓여요. 아래에서 그동안의 모습을 보고, 준비되면 새 공부를 시작해요.</p>
     </div>
 
+    <!-- (개선) 내 공부방 재구성: 학생이 가장 자주 하는 일(새 공부 시작·지난 기록 보기)을 위로 올리고,
+         원리3 [메인 대시보드 설계 지침]의 그래프 4종(공부 방법·공부 전후·질문 실력·스스로 점검)은
+         "나의 성장" 탭 하나로 묶어 한 번에 하나씩 보여 준다. 탭마다 읽는 법과 한 줄 요약을 붙이고,
+         기록이 2번 미만이면 점 하나짜리 빈 그래프 대신 안내 문구를 보여 준다. -->
     <div class="home-top">
-      <div class="stat-row">
+      <div class="stat-row stat-row-3">
         <div class="stat-tile c-green"><span class="ic">✅</span><span class="num" id="agg-sessions">0</span><span class="lab">끝낸 공부</span></div>
         <div class="stat-tile c-purple"><span class="ic">💬</span><span class="num" id="agg-turns">0</span><span class="lab">내가 보낸 말</span></div>
-        <div class="stat-tile c-amber"><span class="ic">🧭</span><span class="num" id="agg-stuck">0</span><span class="lab">막혔어요</span></div>
-        <div class="stat-tile c-pink"><span class="ic" id="agg-top-emoji">🏆</span><span class="num" id="agg-top-strategy" style="font-size:15px">-</span><span class="lab">제일 좋아하는 방법</span></div>
+        <div class="stat-tile c-pink"><span class="ic" id="agg-top-emoji">🏆</span><span class="num" id="agg-top-strategy" style="font-size:15px">-</span><span class="lab">제일 많이 쓴 방법</span></div>
+        <span id="agg-stuck" hidden>0</span>
       </div>
       <button class="btn btn-accent btn-lg" id="btn-new-session">✨ 새 공부 시작하기</button>
     </div>
 
-    <div class="home-grid">
-      <!-- 요청사항(7번째 피드백) 4: "AI의 분석 기능이 메인 대시보드 전반에 있으면 좋겠다" —
-           위 통계 위젯들은 숫자·그래프로 각각 따로 보여주기만 했지, 이를 종합해서 짚어주는 것은
-           없었다. 매번 자동으로 LLM을 부르면 대시보드를 열 때마다 비용·지연이 생기니, 버튼을
-           눌렀을 때만 지금까지의 요약 수치를 근거로 짧은 코칭 한 단락을 만든다(과 잘한다/못한다
-           서열화 금지 — 시스템 프롬프트에서 명시). -->
-      <div class="widget span-2">
-        <div class="widget-head"><span class="badge-ic c-pink">🤖</span><div><h4>AI가 보는 내 공부 패턴</h4><small>위 기록들을 모아서 AI가 짧게 짚어줘요(원할 때만 눌러서 봐요)</small></div></div>
-        <button type="button" class="btn btn-sm btn-accent" id="agg-analysis-btn">🔍 지금까지 기록으로 분석 보기</button>
-        <div id="agg-analysis-box" class="callout info" style="margin-top:10px" hidden></div>
+    <div class="widget">
+      <div class="widget-head"><span class="badge-ic c-pink">📚</span><div><h4>지난 공부 기록</h4><small>눌러서 그날 나눈 이야기와 점수를 다시 볼 수 있어요</small></div></div>
+      <div class="stack" id="sess-list" style="gap:14px"></div>
+    </div>
+
+    <div class="widget growth">
+      <div class="widget-head" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;gap:10px;align-items:center"><span class="badge-ic c-green">🌱</span><div><h4>나의 성장</h4><small>끝낸 공부가 쌓일수록 그래프가 채워져요</small></div></div>
+        <button type="button" class="btn btn-sm btn-ghost" id="agg-analysis-btn">🤖 AI에게 내 공부 패턴 물어보기</button>
       </div>
-      <div class="widget span-2">
-        <div class="widget-head"><span class="badge-ic c-green">🧩</span><div><h4>내가 자주 쓴 공부 방법</h4><small>어떤 방법을 좋아하는지 한눈에 봐요</small></div></div>
+      <div id="agg-analysis-box" class="callout info" style="margin:0 0 12px" hidden></div>
+      <div class="growth-tabs" role="tablist">
+        <button type="button" class="gt on" data-tab="strategy">🧩 공부 방법</button>
+        <button type="button" class="gt" data-tab="prepost">🔁 공부 전·후</button>
+        <button type="button" class="gt" data-tab="prompt">✍️ 질문 실력</button>
+        <button type="button" class="gt" data-tab="meta">🧭 스스로 점검</button>
+      </div>
+      <div class="gp" data-panel="strategy">
+        <p class="gp-read">📖 읽는 법: 막대가 길수록 그 방법을 자주 썼어요. 초록 표시는 그 방법을 쓴 공부에서 점수가 평균 얼마나 달라졌는지예요.</p>
+        <p class="gp-sum" id="gs-sum-strategy"></p>
         <div id="agg-strategy"></div>
       </div>
-      <!-- 요청사항(7번째 피드백) 1: 메인 화면에서 과목별 성취도를 볼 수 있게 해달라는 요청. -->
-      <div class="widget span-2">
-        <div class="widget-head"><span class="badge-ic c-teal">📊</span><div><h4>과목별 성취도</h4><small>사후 진단(없으면 사전 진단) 점수를 과목별로 평균 내요</small></div></div>
-        <div id="agg-subject"></div>
-      </div>
-      <div class="widget span-2">
-        <div class="widget-head"><span class="badge-ic c-purple">🔁</span><div><h4>공부 전·후 비교 (혼자 풀어보기)</h4><small>AI와 이야기하기 전 점수와, AI 없이 혼자 풀었을 때 점수를 나란히 봐요 — 과목마다 다른 색 선이에요</small></div></div>
+      <div class="gp" data-panel="prepost" hidden>
+        <p class="gp-read">📖 읽는 법: 공부 전 "아는 것 확인" 점수와, AI 없이 "혼자 풀어보기" 점수를 비교해요. 같은 종류의 문제라서 차이가 곧 늘어난 만큼이에요.</p>
+        <p class="gp-sum" id="gs-sum-prepost"></p>
+        <div class="gp-empty" id="gp-empty-prepost" hidden>공부를 2번 이상 끝내면 흐름 그래프가 생겨요.</div>
         <canvas id="agg-residual-chart" height="130" style="margin-bottom:12px"></canvas>
         <div class="stack" id="agg-residual" style="gap:14px"></div>
+        <h5 class="gp-sub">과목별로 평균 얼마나 늘었나</h5>
+        <canvas id="agg-subject-delta-chart" height="120"></canvas>
+        <div id="agg-subject" hidden></div>
       </div>
-      <!-- 원리3 [메인 대시보드 설계 지침] 2: "대화 전후의 변화도 평균"을 막대그래프로도 보여준다
-           (위 꺾은선은 시간 흐름용, 이 막대는 과목별 평균 향상량용). -->
-      <div class="widget">
-        <div class="widget-head"><span class="badge-ic c-teal">📈</span><div><h4>과목별 향상 평균</h4><small>사전 진단 대비 사후(또는 혼자 풀어보기) 평균 향상 점수</small></div></div>
-        <canvas id="agg-subject-delta-chart" height="160"></canvas>
-      </div>
-      <!-- 원리3 [메인 대시보드 설계 지침] 4: 메타인지적 지식 정도 지표를 꺾은선(시간 변화)으로 —
-           요청사항(9번째 피드백) 1: 이해질문·전략질문·연결질문 3가지 유형별로 각각 채점되고
-           있으니(원리7), 하나로 뭉친 평균이 아니라 유형별로 3개 선을 따로 그린다. -->
-      <div class="widget">
-        <div class="widget-head"><span class="badge-ic c-amber">🧭</span><div><h4>메타인지 지식 변화</h4><small>이해·전략·연결 질문 유형별로 회차마다 어떻게 바뀌는지</small></div></div>
-        <canvas id="agg-meta-chart" height="160"></canvas>
-      </div>
-      <!-- 원리3 [메인 대시보드 설계 지침] 3, 원리12: 프롬프트 구체성·논리성·명시성 지표.
-           요청사항: 막대 3, 꺾은선 7 비율 분할 및 컴포넌트 박스 내 완벽 안착 -->
-      <div class="widget span-2" style="overflow:hidden">
-        <div class="widget-head"><span class="badge-ic c-purple">✍️</span><div><h4>내 프롬프트 지표</h4><small>되짚기에서 스스로 고르고 매긴 구체성·논리성·명시성(1~5)</small></div></div>
+      <div class="gp" data-panel="prompt" hidden>
+        <p class="gp-read">📖 읽는 법: 되짚기에서 내가 고른 질문에 스스로 매긴 점수(1~5)예요. 구체성은 "무엇을 알고 싶은지 자세히", 논리성은 "앞뒤가 이어지게", 명시성은 "원하는 걸 분명하게"예요.</p>
+        <p class="gp-sum" id="gs-sum-prompt"></p>
         <div id="agg-prompt-wrap" class="prompt-charts-grid">
-          <div class="prompt-chart-col">
-            <canvas id="agg-prompt-bar-chart"></canvas>
-          </div>
-          <div class="prompt-chart-col">
-            <canvas id="agg-prompt-line-chart"></canvas>
-          </div>
+          <div class="prompt-chart-col"><canvas id="agg-prompt-bar-chart"></canvas></div>
+          <div class="prompt-chart-col"><canvas id="agg-prompt-line-chart"></canvas></div>
         </div>
         <div id="agg-prompt-empty" hidden></div>
       </div>
-    </div>
-
-    <div class="widget">
-      <div class="widget-head"><span class="badge-ic c-pink">📚</span><div><h4>지난 공부 기록</h4><small>눌러서 무엇을 배웠는지 다시 떠올려 봐요</small></div></div>
-      <div class="stack" id="sess-list" style="gap:14px"></div>
+      <div class="gp" data-panel="meta" hidden>
+        <p class="gp-read">📖 읽는 법: 공부를 시작할 때 "스스로 점검" 질문에 답한 내용을 세 가지로 본 점수예요. 헷갈리는 곳을 잘 짚었는지(이해), 공부 방법과 이유를 말했는지(전략), 다른 것과 연결했는지(연결).</p>
+        <p class="gp-sum" id="gs-sum-meta"></p>
+        <div class="gp-empty" id="gp-empty-meta" hidden>공부를 2번 이상 끝내면 흐름 그래프가 생겨요.</div>
+        <canvas id="agg-meta-chart" height="140"></canvas>
+      </div>
     </div>
 
     <!-- 요청사항(12번째 피드백) 2: 위 위젯들이 데이터가 쌓이면 어떻게 보이는지 미리 보고
@@ -1820,7 +1825,7 @@ function renderHome(){
   const metaScored = S.filter(s=>s.meta && s.meta.scoreDetail);
   if(metaScored.length){
     metaCanvas.hidden = false;
-    const META_DIMS = [ {k:'understand', label:'이해질문', color:'#f59e0b'}, {k:'strategy', label:'전략질문', color:'#8b5cf6'}, {k:'connect', label:'연결질문', color:'#0d9488'} ];
+    const META_DIMS = [ {k:'understand', label:'이해(헷갈리는 곳 짚기)', color:'#f59e0b'}, {k:'strategy', label:'전략(방법과 이유)', color:'#8b5cf6'}, {k:'connect', label:'연결', color:'#0d9488'} ];
     aggMetaChart = new Chart(metaCanvas, {
       type:'line',
       data:{ labels: metaScored.map((s,i)=>`${i+1}회`), datasets: META_DIMS.map(d=>({
@@ -1888,7 +1893,7 @@ function renderHome(){
     promptBarCanvas.hidden = true; promptLineCanvas.hidden = true;
   }
   $('#agg-residual').innerHTML = withResidual.length
-    ? withResidual.slice().reverse().map(s=>{
+    ? withResidual.slice().reverse().slice(0,3).map(s=>{
         const pre=s.prior.diagScore, post=s.residual.postScore;
         const kind = post>pre?'up':post<pre?'down':'flat';
         const chip = kind==='up' ? '<span class="delta up">▲ 늘었어요</span>' : kind==='down' ? '<span class="delta flat">▼ 줄었어요</span>' : '<span class="delta na">· 비슷해요</span>';
@@ -1902,15 +1907,20 @@ function renderHome(){
   // 지난 공부 기록
   // 요청사항(2번째 피드백) 1: 지난 공부 기록을 눌러도 아무 반응이 없던 문제 — 클릭용 data-id와
   // 커서 스타일을 추가하고, 아래 이벤트 위임(#sess-list click)에서 상세보기 모달을 연다.
+  // (개선) 기록이 많아지면 최근 3개만 먼저 보이고 [더 보기]로 펼친다
+  const LIST_N = window._sessListAll ? ALL_S.length : 3;
   $('#sess-list').innerHTML = ALL_S.length
-    ? ALL_S.slice().reverse().map(s=>{
+    ? ALL_S.slice().reverse().slice(0, LIST_N).map(s=>{
         const emo = SUBJECT_EMOJI[s.ctx.subject] || '📘';
         const turnsN = (s.turns||[]).filter(t=>t.role==='me').length; // 내가 보낸 말 수(위 통계와 같은 기준)
         const note = s.incomplete ? '⏸ 끝내지 않은 공부' : (esc(trim(s.reflect&&s.reflect.note,34)) || '돌아보기 안 씀');
         return `<div class="sess-item" data-id="${esc(s.id)}" style="cursor:pointer" role="button" tabindex="0"><div><div class="t">${emo} ${esc(trim(s.ctx.std,48))}</div><div class="d">${s.startedAt.slice(0,10)} · ${s.ctx.grade||s.ctx.band} ${s.ctx.subject} · 💬${turnsN} · ${s.strategyLabel||'안 골랐어요'} · AI 도움 ${SUPPORT_LABEL[s.support]||'-'}</div></div><div class="note">${note}</div></div>`;
       }).join('')
     : emptyState('📖', '아직 기록이 없어요.<br>새 공부를 시작하면 여기에 쌓여요!');
+  if(ALL_S.length > 3) $('#sess-list').insertAdjacentHTML('beforeend', `<button type="button" class="btn btn-ghost btn-sm" id="sess-more">${window._sessListAll ? '접기' : `지난 기록 ${ALL_S.length-3}개 더 보기`}</button>`);
+  { const m = $('#sess-more'); if(m) m.onclick = ()=>{ window._sessListAll = !window._sessListAll; renderHome(); }; }
 
+  renderGrowth(S, sc, topStrat);
   $('#home-summary-line').textContent = S.length
     ? `끝낸 공부 ${S.length}번 · 내가 보낸 말 ${turns}번 · 가장 많이 쓴 방법 ${topStrat?topStrat.label:'-'}`
     : '아직 끝낸 공부가 없어요. 새 공부를 시작해 볼까요?';
@@ -1947,6 +1957,46 @@ async function runHomeAnalysis(){
 /* ===== 지난 공부 기록 눌러서 보기(읽기 전용 상세) — 그동안 .sess-item에 클릭 핸들러가
    아예 없어서 눌러도 반응이 없었다(실사용 보고로 확인된 버그). 되짚기 화면과 달리 여기서는
    태깅·입력 등 아무것도 바꿀 수 없고, 그때 나눈 대화와 결과만 다시 볼 수 있다. ===== */
+/* (개선) 나의 성장 탭: 한 줄 요약, 기록이 적을 때 안내, 탭 전환 */
+function renderGrowth(S, sc, topStrat){
+  // 공부 방법
+  const used = Object.entries(sc||{}).sort((a,b)=>b[1]-a[1]);
+  $('#gs-sum-strategy').textContent = used.length
+    ? `가장 많이 쓴 방법은 ${topStrat ? topStrat.label : '-'}(${used[0][1]}번)이에요.` + (used.length < STRATS.length ? ` 아직 안 써 본 방법도 ${STRATS.length - used.length}가지 있어요.` : ' 다섯 가지 방법을 모두 써 봤어요!')
+    : '';
+  // 공부 전·후
+  const withRes = S.filter(s => s.prior && s.prior.diagScore!=null && s.residual && s.residual.postScore!=null);
+  const last = withRes[withRes.length-1];
+  $('#gs-sum-prepost').textContent = last ? `지난번 공부: 공부 전 ${last.prior.diagScore}점 → 혼자 풀 때 ${last.residual.postScore}점 (${last.residual.postScore - last.prior.diagScore >= 0 ? '+' : ''}${last.residual.postScore - last.prior.diagScore}점)` : '';
+  const fewRes = withRes.length < 2;
+  $('#gp-empty-prepost').hidden = !fewRes || !withRes.length;
+  $('#agg-residual-chart').style.display = fewRes ? 'none' : '';
+  // 질문 실력
+  const pr = S.flatMap(s => ((s.reflect && s.reflect.promptRatings) || []).filter(r => PROMPT_RATE_DIMS.every(d => r[d.k]!=null)));
+  if(pr.length){
+    const av = PROMPT_RATE_DIMS.map(d => ({ label:d.label, v: pr.reduce((a,r)=>a+r[d.k],0)/pr.length }));
+    const hi = av.slice().sort((a,b)=>b.v-a.v)[0], lo = av.slice().sort((a,b)=>a.v-b.v)[0];
+    $('#gs-sum-prompt').textContent = `내 질문은 ${hi.label}(${hi.v.toFixed(1)}점)이 가장 좋고, ${lo.label}(${lo.v.toFixed(1)}점)을 더 연습하면 좋아요.`;
+  } else $('#gs-sum-prompt').textContent = '';
+  // 스스로 점검
+  const ms = S.filter(s => s.meta && s.meta.scoreDetail);
+  if(ms.length){
+    const L = ms[ms.length-1].meta.scoreDetail, F = ms[0].meta.scoreDetail;
+    const names = { understand:'이해(헷갈리는 곳 짚기)', strategy:'전략(방법과 이유)', connect:'연결' };
+    const best = Object.keys(names).sort((a,b)=>L[b]-L[a])[0];
+    $('#gs-sum-meta').textContent = ms.length >= 2
+      ? (Object.keys(names).some(k=>L[k]>F[k]) ? `처음보다 ${Object.keys(names).filter(k=>L[k]>F[k]).map(k=>names[k]).join('·')} 점수가 올랐어요.` : '처음과 비슷한 수준을 유지하고 있어요. 헷갈리는 곳을 구체적으로 짚어 보면 더 좋아져요.')
+      : `지난번엔 ${names[best]}을(를) 가장 잘했어요.`;
+  } else $('#gs-sum-meta').textContent = '';
+  $('#gp-empty-meta').hidden = !(ms.length === 1);
+  $('#agg-meta-chart').style.display = ms.length < 2 ? 'none' : '';
+}
+function showGrowthTab(tab){
+  $$('.growth-tabs .gt').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  $$('.growth .gp').forEach(p => p.hidden = p.dataset.panel !== tab);
+  try{ localStorage.setItem('growthTab', tab); }catch(e){}
+  setTimeout(() => [typeof aggResidualChart!=='undefined'?aggResidualChart:null, typeof aggSubjectDeltaChart!=='undefined'?aggSubjectDeltaChart:null, typeof aggMetaChart!=='undefined'?aggMetaChart:null, typeof aggPromptBarChart!=='undefined'?aggPromptBarChart:null, typeof aggPromptLineChart!=='undefined'?aggPromptLineChart:null].forEach(c => { try{ c && c.resize && c.resize(); }catch(e){} }), 30);
+}
 function openSessDetail(s){
   const emo = SUBJECT_EMOJI[s.ctx.subject] || '📘';
   const scoreRows = [];
@@ -4467,6 +4517,8 @@ function init(){
     if(accD && accD.draft && !window.confirm('하던 공부가 남아 있어요. 새 공부를 시작하면 하던 공부는 지워져요. 그래도 새로 시작할까요?')){ ev.stopImmediatePropagation(); return; }
     if(accD && accD.draft) archiveDraft(); stPicks=[]; $('#st-filter').value=''; $('#st-topic').value=''; $('#st-match-status').hidden=true; show('start'); });
   $('#btn-seed-sample').addEventListener('click', seedSampleSessions);
+  document.querySelector('.growth-tabs').addEventListener('click', e => { const b = e.target.closest('.gt'); if(b) showGrowthTab(b.dataset.tab); });
+  try{ const t = localStorage.getItem('growthTab'); if(t) showGrowthTab(t); }catch(e){}
   $('#btn-clear-sample').addEventListener('click', clearSampleSessions);
   $('#agg-analysis-btn').addEventListener('click', runHomeAnalysis);
   $('#agg-residual').addEventListener('click', e=>{
