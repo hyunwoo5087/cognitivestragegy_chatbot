@@ -596,6 +596,29 @@
   .done-card[open] > summary::after{content:" · 접기"}
   .done-card > summary:hover{background:var(--surface-2);color:var(--ink-2)}
   .done-card[open] > .meta-score-card{margin-top:6px}
+  .msc-row b{width:auto;min-width:34px;white-space:nowrap}
+  .lv-sum{background:var(--surface-2);border-radius:14px;padding:12px 14px}
+  .lv-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
+  .lv-chip{font-size:12px;color:var(--ink-2);background:#fff;border-radius:999px;padding:2px 10px}
+  .lv-chip b{color:var(--ink)}
+  .lv-sent{font-size:13.5px;color:var(--ink);margin:6px 0 2px}
+  .lv-more summary{cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;list-style:none}
+  .lv-more summary::-webkit-details-marker{display:none}
+  .lv-more summary::after{content:" ▾"}
+  .sp-title{font-size:14px;font-weight:800;color:var(--ink)}
+  .sp-title span{font-size:12px;font-weight:500;color:var(--muted);margin-left:6px}
+  .kt-line{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+  .strat-cards{grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr))!important;max-width:none!important;gap:8px;align-items:start}
+  .strat-card{padding:12px 14px;display:flex;flex-direction:column;gap:4px;align-items:stretch}
+  .sc-top{display:flex;align-items:center;gap:8px}
+  .sc-check{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line-strong);display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex:none}
+  .strat-card.is-selected .sc-check{background:var(--accent);border-color:var(--accent)}
+  .sc-name{font-size:14px;font-weight:700;color:var(--ink)}
+  .sc-badges{display:flex;gap:4px;flex-wrap:wrap}
+  .strat-card .sc-desc{font-size:12.5px;color:var(--ink-2);margin:0}
+  .strat-card .sc-when{background:transparent!important;padding:0!important;margin:0!important;font-size:12px;color:var(--muted)!important}
+  .strat-card .sc-tips{margin-top:6px}
+  .sp-confirm{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2);border-radius:12px;padding:8px 8px 8px 14px;font-size:13px;color:var(--ink-2);position:sticky;bottom:0}
   .side-more{border-radius:14px;background:var(--surface-2);padding:12px 14px}
   .side-more summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2);list-style:none}
   .side-more summary::-webkit-details-marker{display:none}
@@ -2762,7 +2785,7 @@ function syncComposeLock(){
     else if(session.pendingCheckpoint) ph = '위의 이해도 체크(점수+이유)를 먼저 해요';
     else if(session.phase==='prep' && session.prepStep==='priorscore') ph = '위에서 자신감을 하나 골라요';
     else if(session.phase==='prep' && session.prepStep==='meta') ph = `스스로 점검 질문 ${Math.min(Math.max(session.meta.step||0,0)+1,4)}/4에 답해요`;
-    else if(session.phase==='explore' && !session.cycleStarted && session.prepStep!=='reason') ph = '위에서 공부 방법을 골라 [다음]을 눌러요';
+    else if(session.phase==='explore' && !session.cycleStarted && session.prepStep!=='reason') ph = '위에서 공부 방법을 골라 [이 방법으로 시작]을 눌러요';
     inp.placeholder = ph;
   }
   const qa = $('#quick-actions');
@@ -3030,7 +3053,7 @@ function renderStream(){
   { const ais = box.querySelectorAll('.msg.ai'); if(ais.length) ais[ais.length-1].classList.add('is-latest'); }
   // (개선) 대화 집중: 이미 끝난 결과 카드(아는 것 확인 결과·스스로 점검 결과·끝낸 이해도 체크 등)는
   // 대화 흐름을 가리지 않도록 최근 3개 항목이 아니면 한 줄 제목으로 접어 둔다(누르면 다시 펼쳐짐).
-  { const kids = [...box.children]; const tail = Math.max(0, kids.length - 3);
+  { const kids = [...box.children]; const tail = box.querySelector('[data-pick="strategy"]') ? kids.length - 1 : Math.max(0, kids.length - 3);
     kids.forEach((el, idx) => {
       if(idx >= tail || !el.classList.contains('note')) return;
       const card = el.querySelector(':scope > .meta-score-card:not(.checkpoint-card)'); if(!card) return;
@@ -3133,12 +3156,19 @@ function levelSummaryHTML(){
     if(scores.connect!=null && scores.connect<60) return `다른 지식·경험과 연결 짓는 게 아직 낯선 편이에요.`;
     return `지금까지는 전체적으로 골고루 잘 하고 있어요!`;
   })();
-  return `<div class="callout accent" style="margin-bottom:10px">
-    <b>지금까지 나온 내 정보</b>
-    <p style="font-size:13px;margin:6px 0 8px;color:var(--ink)">${sentence}</p>
-    <div class="stack" style="gap:2px">${rows.map(r=>`<div class="msc-row"><span>${esc(r[0])}</span><span class="bar"><i style="width:${r[1]}%"></i></span><b>${r[1]}점</b></div>`).join('')}</div>
-    ${session.meta.calib ? `<p class="hint" style="margin-top:6px">${esc(calibSentence(session.meta.calib))}</p>` : ''}
-    <div class="hint" style="margin-top:6px">이건 참고일 뿐, 방법은 항상 내가 직접 골라요. 아래 카드마다 "이럴 때 도움돼요"를 적어뒀으니 참고해요.</div>
+  // (개선) 원리8-1 "이해하기 쉽게 정리": 한 문장 + 두 개의 평균만 먼저 보이고, 세부 점수 막대는 펼쳐서 본다.
+  const avg = arr => { const v = arr.filter(x=>x!=null); return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null; };
+  const sub = session.prior.sub || {};
+  const knowAvg = session.prior.diagScore!=null ? session.prior.diagScore : avg([sub.activate, sub.understand, sub.apply]);
+  const metaAvg = session.meta.scoreDetail ? avg([session.meta.scoreDetail.understand, session.meta.scoreDetail.strategy, session.meta.scoreDetail.connect]) : null;
+  const chips = [knowAvg!=null?`<span class="lv-chip">아는 것 <b>${knowAvg}점</b></span>`:'', metaAvg!=null?`<span class="lv-chip">스스로 점검 <b>${metaAvg}점</b></span>`:''].join('');
+  return `<div class="lv-sum">
+    <div class="lv-head"><b>지금 내 상태</b>${chips}</div>
+    <p class="lv-sent">${sentence}</p>
+    <details class="lv-more"><summary>점수 자세히 보기</summary>
+      <div class="stack" style="gap:2px;margin-top:6px">${rows.map(r=>`<div class="msc-row"><span>${esc(r[0])}</span><span class="bar"><i style="width:${r[1]}%"></i></span><b>${r[1]}점</b></div>`).join('')}</div>
+      ${session.meta.calib ? `<p class="hint" style="margin-top:6px">${esc(calibSentence(session.meta.calib))}</p>` : ''}
+    </details>
   </div>`;
 }
 // 원리8: 여러 방법을 함께 고를 수 있다. 카드는 토글만 하고, 아래 확정 버튼을 눌러야 다음으로 간다.
@@ -3149,23 +3179,28 @@ function strategyPickHTML(picked){
   const weak = weakStratId();
   // (개선) 원리8 본문의 "과업의 특성": 내 점수(⭐)뿐 아니라 오늘 내용의 성격에 잘 맞는 방법(📘)도 표시한다.
   const k = kTypeOf();
-  const ktBanner = k ? `<div class="kt-banner">오늘 내용은 <b>${esc(KNOWLEDGE_TYPES[k].label)}</b> 성격이 강해요 — ${esc(KNOWLEDGE_TYPES[k].desc)}.${session.ctx.kTypeWhy?` <span style="color:var(--muted)">(${esc(session.ctx.kTypeWhy)})</span>`:''}</div>` : '';
+  // (개선) 방법 고르기 단순화 — 원리8-2(다섯 방법 제시·선택)·8-3(특징과 맞는 학습자)은 카드마다 한 줄씩 남기고,
+  // 하는 법(팁)은 고른 카드에서만 펼친다. 내용 성격은 한 줄로 줄이고 카드의 "오늘 내용에 잘 맞아요" 표시로 잇는다.
+  const ktLine = k ? `<p class="kt-line" title="${esc(session.ctx.kTypeWhy||'')}">오늘 내용은 <b>${esc(KNOWLEDGE_TYPES[k].label)}</b> 성격이에요. 잘 맞는 방법에 표시해 두었어요.</p>` : '';
   return `<div class="inline-pick stack" data-pick="strategy">
     ${levelSummaryHTML()}
-    ${ktBanner}
-    <div class="strat-cards">${STRATS.map(s=>
-      `<button type="button" class="strat-card ${picked.includes(s.id)?'is-selected':''}" data-strat="${s.id}">
-        <div class="sc-head">${s.emoji} ${esc(s.label)}${fitOf(s.id)===2?'<span class="sc-badge fit">오늘 내용에 잘 맞아요</span>':''}${s.id===weak?'<span class="sc-badge">지금 나한테 도움될 수 있어요</span>':''}</div>
+    <div>
+      <div class="sp-title">공부 방법 고르기 <span>여러 개 골라도 돼요</span></div>
+      ${ktLine}
+    </div>
+    <div class="strat-cards">${STRATS.map(s=>{
+      const on = picked.includes(s.id);
+      return `<button type="button" class="strat-card ${on?'is-selected':''}" data-strat="${s.id}" aria-pressed="${on}">
+        <div class="sc-top"><span class="sc-check">${on?'✓':''}</span><span class="sc-name">${s.emoji} ${esc(s.label)}</span></div>
+        ${(fitOf(s.id)===2 || s.id===weak) ? `<div class="sc-badges">${fitOf(s.id)===2?'<span class="sc-badge fit">오늘 내용에 잘 맞아요</span>':''}${s.id===weak?'<span class="sc-badge">지금 나한테 도움될 수 있어요</span>':''}</div>` : ''}
         <div class="sc-desc">${esc(s.desc)}</div>
-        <div class="sc-when">${esc(s.recommendWhen)}</div>
-        <ul class="sc-tips">${s.tips.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>
-      </button>`
-    ).join('')}</div>
-    <button type="button" class="prep-next-btn" data-confirm-strategy ${picked.length?'':'disabled'} style="${picked.length?'':'opacity:.5;pointer-events:none'}">
-      <span class="pn-ic"></span>
-      <span class="pn-text"><b>${picked.length ? picked.length+'개 방법으로 할래요' : '방법을 1개 이상 골라주세요'}</b><small>여러 개를 함께 써도 좋아요. 다 골랐으면 눌러요.</small></span>
-      <span class="pn-arrow">다음 →</span>
-    </button>
+        <div class="sc-when">이럴 때 좋아요 · ${esc(s.recommendWhen)}</div>
+        ${on ? `<ul class="sc-tips">${s.tips.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+      </button>`; }).join('')}</div>
+    <div class="sp-confirm">
+      <span>${picked.length ? `<b>${picked.length}개</b> 골랐어요` : '방법을 1개 이상 골라요'}</span>
+      <button type="button" class="btn btn-primary btn-sm" data-confirm-strategy ${picked.length?'':'disabled'}>이 방법으로 시작</button>
+    </div>
   </div>`;
 }
 
