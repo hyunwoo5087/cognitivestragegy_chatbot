@@ -51,6 +51,13 @@ export async function kvSetNX(key, value) {
   const r = await redisCmd(['SET', key, value, 'NX']);
   return r === 'OK' ? 'OK' : null;
 }
+// 교사용: 저장된 키 목록(Redis 백엔드에서만). 시트 백엔드는 스프레드시트에서 직접 확인한다.
+export async function kvKeys(pattern) {
+  if (hasSheets()) throw new Error('Google 시트 저장소에서는 스프레드시트에서 직접 확인해 주세요.');
+  const out = []; let cursor = '0';
+  do { const r = await redisCmd(['SCAN', cursor, 'MATCH', pattern, 'COUNT', '500']); cursor = String(r[0]); out.push(...r[1]); } while (cursor !== '0' && out.length < 20000);
+  return out;
+}
 export async function kvDel(key) { return hasSheets() ? sheets_kvDel(key) : redisCmd(['DEL', key]); }
 
 /* ---------- Google 서비스 계정 JWT → OAuth2 액세스 토큰 (웜 인스턴스 간 캐시) ---------- */

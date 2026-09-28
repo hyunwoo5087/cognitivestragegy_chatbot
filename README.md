@@ -416,3 +416,9 @@ git push -u origin main
 새 Vercel 프로젝트에서는 대시보드 **Storage → Create Database → Upstash for Redis(Free) → Connect** 만 누르면
 `KV_REST_API_URL`·`KV_REST_API_TOKEN`이 자동 등록된다. 그 밖에 필요한 환경변수는 `UPSTAGE_API_KEY`, `AUTH_SECRET` 두 개뿐.
 손글씨 인식(Cloud Vision)은 Google 설정이 있을 때만 동작한다.
+
+### v31 — 교사용 관리, 끝내지 않은 공부 보존
+- **교사용 관리 화면** `/teacher.html` (Vercel 환경변수 `TEACHER_KEY` 필요): 학생 목록, 세션 요약 CSV·전체 원자료 JSON 내려받기, 학생 그림 비밀번호 초기화. API는 `POST /api/teacher` (Redis 저장소에서 동작).
+- **끝내지 않은 공부도 기록에 남김**: 임시 저장본을 [그만하기]하거나 새 공부를 시작하면 "미완료"로 기록에 옮긴다(통계에서는 제외, 목록에는 ⏸ 표시). CSV에는 completed / incomplete / in_progress 로 구분.
+- 예시 데이터 채우기 버튼은 주소에 `?demo`를 붙였을 때만 보인다.
+- 내 공부방 "주고받은 말" → "내가 보낸 말"로 이름과 셈 기준을 통일.

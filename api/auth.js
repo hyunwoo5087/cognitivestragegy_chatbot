@@ -49,7 +49,7 @@ export default async function handler(req, res) {
       const raw = await kvGet(uKey);
       if (!raw) { res.status(404).json({ error: '아직 없는 이름이에요. [처음이에요]에서 공부방을 먼저 만들어 주세요.' }); return; }
       const rec = JSON.parse(raw);
-      if (!verifyPin(pin, rec.s, rec.h)) { res.status(401).json({ error: '그림 비밀번호가 달라요. 다시 해 볼까요?' }); return; }
+      if (!verifyPin(pin, rec.s, rec.h)) { res.status(401).json({ error: '그림 비밀번호가 달라요. 그림 4개를 고른 순서까지 같아야 해요. 잊었으면 선생님께 말해 주세요.' }); return; }
       let data = null;
       try { data = JSON.parse(await kvGet(dKey)); } catch (e) { data = null; }
       if (!data || !Array.isArray(data.sessions)) data = { nickname, created: rec.created, sessions: [] };

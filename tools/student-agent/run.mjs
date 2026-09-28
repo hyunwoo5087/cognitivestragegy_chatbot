@@ -129,7 +129,8 @@ async function runOne(personaId, scenarioId) {
   try {
     await page.goto(URL_);
     await page.click('#auth-tabs button >> nth=1').catch(() => {});
-    const nick = ('s' + personaId.slice(0, 3) + scenarioId.slice(0, 2) + Math.random().toString(36).slice(2, 7)).slice(0, 16);
+    const nick = args.nick ? String(args.nick).slice(0, 16) : ('s' + personaId.slice(0, 3) + scenarioId.slice(0, 2) + Math.random().toString(36).slice(2, 7)).slice(0, 16);
+    res.nick = nick;
     await page.fill('#au-nick', nick); for (let i = 0; i < 4; i++) await page.click(`#palette button >> nth=${i}`);
     await page.click('#auth-go'); await page.waitForSelector('#btn-new-session', { state: 'visible', timeout: 30000 });
     await page.click('#btn-new-session');
