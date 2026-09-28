@@ -396,6 +396,19 @@
   .sd-turn .r{font-weight:700;font-size:11px;color:var(--muted);margin-bottom:2px}
   .modal-quote{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--ink-2);margin:12px 0;max-height:160px;overflow-y:auto;white-space:pre-wrap}
 
+  /* (사용성) 못 넘어갈 때 이유 안내 */
+  .gate-hint{font-size:12.5px;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:6px 10px;margin-top:8px;cursor:pointer}
+  .gate-hint:empty{display:none}
+  #chat-send{white-space:nowrap}
+  .draft-banner{margin:14px 0;padding:14px 16px;border-radius:12px;border:1.5px solid #a9e2c6;background:var(--accent-wash);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .draft-banner b{flex:1;min-width:200px}
+  @media(max-width:700px){
+    [data-screen="chat"] .rail{display:none}
+    .scaffold-hint,.cycle-title{display:none}
+    .goal-strip #gs-extra-row,.goal-strip #gs-goal-row{display:none}
+    .brand small,#who{display:none}
+    #btn-home,#btn-logout{white-space:nowrap;padding:0 10px}
+  }
   /* (개선) 과업 성공 기준·AI 진단 근거 카드 */
   .task-card{margin:6px 0 4px;padding:10px 12px;border:1px dashed var(--line,#d6dbe4);border-radius:10px;background:var(--panel,#f8fafc);font-size:12.5px;line-height:1.5}
   .task-card .tc-head{font-weight:800;margin-bottom:4px}
@@ -547,6 +560,7 @@
       </div>
       <div class="callout warn" id="auth-msg" hidden></div>
       <button class="btn btn-primary btn-block" id="auth-go">들어가기</button>
+      <div class="gate-hint" id="auth-gate"></div>
     </div>
   </section>
 
@@ -717,7 +731,7 @@
     <div class="nav">
       <button class="btn btn-ghost" id="st-back">← 내 공부방</button>
       <span class="filler"></span>
-      <button class="btn btn-primary" id="st-go" disabled>AI와 이야기 시작 →</button>
+      <span style="display:flex;flex-direction:column;align-items:flex-end"><button class="btn btn-primary" id="st-go" disabled>AI와 이야기 시작 →</button><span class="gate-hint" id="st-gate"></span></span>
     </div>
   </section>
 
@@ -735,7 +749,7 @@
           <span id="chat-std">오늘 배울 내용</span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <span class="support-badge" id="strategy-badge" style="background:var(--accent-wash);border-color:#cdeadd;color:var(--accent-ink)" title="내가 고른 공부 방법이에요(원리8) — 여러 개 고를 수 있고, 막히면 바꿔볼 수 있어요." hidden>
+          <span class="support-badge" id="strategy-badge" style="background:var(--accent-wash);border-color:#cdeadd;color:var(--accent-ink)" title="내가 고른 공부 방법이에요 — 여러 개 고를 수 있고, 막히면 바꿔볼 수 있어요." hidden>
             방법 <span id="strategy-badge-text">-</span>
           </span>
           <button class="icon-btn" id="btn-change-strategy" style="padding:0 10px;height:28px;font-size:11.5px" hidden>🔄 방법 바꾸기</button>
@@ -747,7 +761,7 @@
         <div class="gs-row" id="gs-goal-row" hidden><span class="gs-ic">🧭</span><b>오늘 목표</b><span id="gs-goal"></span></div>
       </div>
       <div class="scaffold-wrap" id="scaffold-wrap">
-        <div class="scaffold-title">AI 도움 크기(원리1) <span class="scaffold-hint">— 잘 이해할수록 자동으로 줄어들고, 다시 늘지는 않아요</span></div>
+        <div class="scaffold-title">AI 도움 크기 <span class="scaffold-hint">— 잘 이해할수록 자동으로 줄어들고, 다시 늘지는 않아요</span></div>
         <div class="scaffold-strip" id="scaffold-strip"></div>
       </div>
       <!-- 요청사항(5번째 피드백) 4: "절차는 전체 챗봇 대화 절차를 중심으로 주면 좋겠다" — 가/나/다
@@ -895,7 +909,7 @@
     <div class="nav">
       <button class="btn btn-ghost" id="reflect-back">← 이야기로 돌아가기</button>
       <span class="filler"></span>
-      <button class="btn btn-primary" id="reflect-next-a" disabled>다음: 내가 쓴 질문 보기 →</button>
+      <span style="display:flex;flex-direction:column;align-items:flex-end"><button class="btn btn-primary" id="reflect-next-a" disabled>다음: 내가 쓴 질문 보기 →</button><span class="gate-hint" id="reflect-gate"></span></span>
       <button class="btn btn-primary" id="reflect-next-b" hidden>다음: 혼자 풀어보기 →</button>
     </div>
   </section>
@@ -1472,14 +1486,14 @@ function localApi(path, opts){
       return { nickname:nick, data };
     }
     if(!(nick in users)) throw new Error('아직 없는 이름이에요. [처음이에요]에서 먼저 만들어 주세요.');
-    if(users[nick]!==pin) throw new Error('그림 비밀번호가 달라요.');
+    if(users[nick]!==pin) throw new Error('그림 비밀번호가 달라요. 그림 4개를 고른 순서까지 같아야 해요.');
     lsSet('localtest.current', nick);
     return { nickname:nick, data: dataOf(nick) || { nickname:nick, created:new Date().toISOString(), sessions:[] } };
   }
   if(path==='/api/data'){
     if(!cur) throw new Error('먼저 공부방에 들어와 주세요.');
     if(method==='GET') return { nickname:cur, data: dataOf(cur) || { nickname:cur, created:new Date().toISOString(), sessions:[] } };
-    lsSet('localtest.data.'+cur, JSON.stringify({ nickname:cur, created:body.created, sessions:body.sessions }));
+    lsSet('localtest.data.'+cur, JSON.stringify({ nickname:cur, created:body.created, sessions:body.sessions, draft: body.draft || null }));
     return { ok:true };
   }
   throw new Error('로컬 테스트 모드에서는 쓸 수 없는 기능이에요(' + path + ').');
@@ -1513,16 +1527,42 @@ async function flushSave(){
   clearTimeout(_saveTimer); _saveTimer = null;
   const acc = account(); if(!acc) return;
   try{
-    await apiJSON('/api/data', { method:'PUT', body: JSON.stringify({ created:acc.created, sessions:acc.sessions }) });
+    await apiJSON('/api/data', { method:'PUT', body: JSON.stringify({ created:acc.created, sessions:acc.sessions, draft: acc.draft || null }) });
   }catch(e){ console.warn('저장 실패:', e.message); }
+}
+/* ===== (사용성) 하던 공부 이어서 하기 =====
+   예전엔 한 세션(30~40분)이 맨 끝 [저장하고 내 공부방으로]를 누를 때만 저장됐다. 중간에 새로고침·탭 닫힘·
+   태블릿 절전이 일어나면 그때까지의 대화가 모두 사라졌다. 이제 진행 중인 세션을 "임시 저장본(draft)"으로
+   서버에 수시로 저장하고, 다음에 들어오면 내 공부방에서 [이어서 하기]로 돌아갈 수 있다. */
+function currentScreen(){ const el = document.querySelector('.screen.is-active'); return el ? el.dataset.screen : null; }
+function saveDraft(){
+  const acc = account(); if(!acc || !session) return;
+  const scr = currentScreen();
+  if(!['chat','reflect','residual'].includes(scr)) return;
+  acc.draft = { session, screen: scr, savedAt: new Date().toISOString() };
+  queueSave();
+}
+function clearDraft(){ const acc = account(); if(acc && acc.draft){ acc.draft = null; queueSave(); } }
+function resumeDraft(){
+  const acc = account(); if(!acc || !acc.draft) return;
+  session = acc.draft.session; busy = false;
+  const scr = acc.draft.screen || 'chat';
+  show(scr);
+  if(scr==='chat'){
+    // 끊긴 지점 보정: 문항 생성 중이었거나, 내 말 뒤에 AI 답이 없으면 안내한다
+    if(session.phase==='prep' && session.prepStep==='activate' && !(session.prior.items||[]).length){ startActivationQuiz(); return; }
+    const lastTalk = [...session.turns].reverse().find(t=>t.role==='me'||t.role==='ai');
+    if(lastTalk && lastTalk.role==='me') pushNote('↩ 지난번에 여기서 멈췄어요. AI 답이 끊겼으니 방금 한 말을 한 번 더 보내 줄래요?');
+    syncComposeLock();
+  }
 }
 window.addEventListener('beforeunload', ()=>{
   if(!_saveTimer) return;
   const acc = account(); if(!acc) return;
-  if(LOCAL_MODE){ try{ localApi('/api/data', { method:'PUT', body: JSON.stringify({ created:acc.created, sessions:acc.sessions }) }); }catch(e){} return; }
+  if(LOCAL_MODE){ try{ localApi('/api/data', { method:'PUT', body: JSON.stringify({ created:acc.created, sessions:acc.sessions, draft: acc.draft || null }) }); }catch(e){} return; }
   try{
     navigator.sendBeacon('/api/data', new Blob(
-      [JSON.stringify({ created:acc.created, sessions:acc.sessions })], { type:'application/json' }));
+      [JSON.stringify({ created:acc.created, sessions:acc.sessions, draft: acc.draft || null })], { type:'application/json' }));
   }catch(e){}
 });
 // 이전 버전에서 브라우저에 남아있던 로컬 데이터 흔적 정리
@@ -1541,6 +1581,7 @@ function show(name){
   if (name === 'chat') enterChat();
   if (name === 'reflect') enterReflect();
   if (name === 'residual') enterResidual();
+  if (['reflect','residual'].includes(name)) saveDraft();
 }
 function modal(title, body){
   $('#modal-title').textContent = title; $('#modal-body').textContent = body;
@@ -1567,7 +1608,12 @@ function buildPalette(){
 }
 function refreshReels(){ reels.forEach((v,i)=>{ const el=$('#reel'+i); if(!el) return; el.querySelector('span').textContent = v||'❔'; el.className = 'reel' + (v?' locked':''); }); }
 function pinReady(){ return reels.every(v=>v); }
-function refreshAuth(){ $('#auth-go').disabled = !($('#au-nick').value.trim() && pinReady()); }
+function refreshAuth(){
+  const hasNick = !!$('#au-nick').value.trim(), left = reels.filter(v=>!v).length;
+  $('#auth-go').disabled = !(hasNick && pinReady());
+  // (사용성) 버튼이 왜 안 눌리는지 바로 아래에 알려 준다
+  const g = $('#auth-gate'); if(g) g.textContent = !hasNick ? '👆 먼저 공부방에서 쓸 이름을 적어요.' : (left ? `👆 그림 비밀번호를 ${left}개 더 골라요.` : '');
+}
 function setPin(){ pin = reels.slice(); }
 
 function spinAll(){
@@ -1637,6 +1683,17 @@ let homeAnalysisText = null; // 요청사항(7번째 피드백) 4: 버튼을 눌
 function renderHome(){
   const acc = account(); if(!acc) return show('auth');
   $('#home-name').textContent = acc.nickname;
+  { // (사용성) 하던 공부 이어서 하기
+    let db = $('#home-draft');
+    if(!db){ db = document.createElement('div'); db.id = 'home-draft'; $('#home-summary-line').insertAdjacentElement('afterend', db); }
+    const d = acc.draft;
+    if(d && d.session && d.session.ctx){
+      const when = new Date(d.savedAt); const where = {chat:'AI와 이야기하던 중', reflect:'되짚어보던 중', residual:'혼자 풀어보던 중'}[d.screen] || '공부하던 중';
+      db.innerHTML = `<div class="draft-banner"><b>📌 지난번에 하던 공부가 있어요 — ${esc(d.session.ctx.subject)} · ${esc(trim(d.session.ctx.std,30))} (${where}, ${when.getMonth()+1}/${when.getDate()} ${String(when.getHours()).padStart(2,'0')}:${String(when.getMinutes()).padStart(2,'0')})</b><button type="button" class="btn btn-primary btn-sm" id="draft-resume">이어서 하기</button><button type="button" class="btn btn-ghost btn-sm" id="draft-discard">지우기</button></div>`;
+      $('#draft-resume').onclick = resumeDraft;
+      $('#draft-discard').onclick = ()=>{ clearDraft(); renderHome(); };
+    } else db.innerHTML = '';
+  }
   const S = acc.sessions;
   $('#agg-sessions').textContent = S.length;
   const analysisBtn = $('#agg-analysis-btn'), analysisBox = $('#agg-analysis-box');
@@ -2074,6 +2131,8 @@ function syncStartGo(){
   const sig = stPicks.map(p=>p.code).join(',');
   if(conf && conf.dataset.sig!==sig){ conf.checked = false; conf.dataset.sig = sig; } // 고른 내용이 바뀌면 다시 확인
   $('#st-go').disabled = stPicks.length===0 || !(conf && conf.checked);
+  const sg = $('#st-gate');
+  if(sg) sg.textContent = stPicks.length===0 ? '👆 공부하고 싶은 것을 적고 [딱 맞는 내용 찾기]를 눌러요 (눌러서 이동)' : (!(conf && conf.checked) ? '👆 "찾은 내용"이 내 목표와 맞는지 읽고 체크해요 (눌러서 이동)' : '');
   const wrap = $('#st-picked-wrap');
   const cbox = $('#st-picked-concept');
   if(cbox) cbox.innerHTML = stPicks.map(p=>`<div class="hint" style="font-size:12px;line-height:1.5"><b>${esc(p.code||'')}</b> ${esc(p.name)}${p.concept?`<br><span style="color:var(--ink-2)">해설: ${esc(trim(p.concept,160))}</span>`:''}</div>`).join('');
@@ -2370,6 +2429,12 @@ function paintPhase(){
   $('#btn-stuck').hidden = session.phase!=='explore' || !session.cycleStarted;
   $('#delegate-wrap').hidden = session.phase!=='explore' || !session.cycleStarted;
   $('#chat-finish').hidden = session.phase==='prep' || !session.cycleStarted;
+  { // (사용성) 언제 끝내면 되는지: 고른 방법을 모두 해 봤으면 버튼을 강조하고 문구로 알려 준다
+    const done = session.strategies && session.strategies.length && session.strategies.every(id=>(session.stratDone||{})[id] || ((session.stratRounds||{})[id]||0) >= 2);
+    const fb = $('#chat-finish');
+    fb.textContent = done ? '✅ 고른 방법을 다 해 봤어요! 이야기 끝내기 → 돌아보기' : '이야기 끝내기 → 돌아보기';
+    fb.classList.toggle('btn-primary', !!done);
+  }
   $('#proc-sub-wrap').hidden = session.phase!=='explore' || !session.cycleStarted;
   renderProcStrip();
   if(session.phase==='explore' && session.cycleStarted){ renderCycleStrip(); renderQuickActions(); }
@@ -2380,6 +2445,18 @@ function paintPhase(){
 function syncComposeLock(){
   const locked = !!(session && (session.pendingCheckpoint || session.pendingActivation)) || busy;
   ['chat-send','chat-input','btn-stuck','btn-change-strategy'].forEach(id=>{ const el=$('#'+id); if(el) el.disabled = locked; });
+  // (사용성) 입력창이 왜 잠겼는지, 지금 무엇을 하면 되는지 입력창 자리에 알려 준다
+  const inp = $('#chat-input');
+  if(inp && session){
+    let ph = '편하게 말해도 돼요. 내 생각이나 예상을 먼저 적어 보세요.';
+    if(busy) ph = 'AI가 답을 쓰는 중이에요… 잠깐만 기다려요';
+    else if(session.pendingActivation) ph = '⬆ 위의 "아는 것 확인" 문제를 먼저 풀고 [다 적었어요]를 눌러요';
+    else if(session.pendingCheckpoint) ph = '⬆ 위의 이해도 체크(점수+이유)를 먼저 해요';
+    else if(session.phase==='prep' && session.prepStep==='priorscore') ph = '⬆ 위에서 자신감을 하나 골라요';
+    else if(session.phase==='prep' && session.prepStep==='meta') ph = `스스로 점검 질문 ${Math.min(Math.max(session.meta.step||0,0)+1,4)}/4에 답해요`;
+    else if(session.phase==='explore' && !session.cycleStarted && session.prepStep!=='reason') ph = '⬆ 위에서 공부 방법을 골라 [다음]을 눌러요';
+    inp.placeholder = ph;
+  }
   const qa = $('#quick-actions');
   qa.style.pointerEvents = locked ? 'none' : '';
   qa.style.opacity = locked ? '.4' : '';
@@ -2559,7 +2636,7 @@ function renderStream(){
             <div class="body stack">
               ${items.map((it,i)=>aqFieldHTML(it,i)).join('')}
             </div>
-            <div style="text-align:right;padding:0 16px 16px"><button type="button" class="btn btn-sm btn-primary aq-submit" data-id="${t.id}" ${activationQuizValid()?'':'disabled'}>다 적었어요</button></div>
+            <div style="text-align:right;padding:0 16px 16px"><button type="button" class="btn btn-sm btn-primary aq-submit" data-id="${t.id}" ${activationQuizValid()?'':'disabled'}>다 적었어요</button>${activationQuizValid()?'':`<div class="gate-hint aq-gate">아직 안 한 문항: ${items.map((it,i)=>(it.a||'').trim()?null:(i+1)+'번').filter(Boolean).join(', ')} — 모르면 "모르겠어요"라고 써도 돼요</div>`}</div>
           </div></div>`);
         }
         return;
@@ -2626,6 +2703,8 @@ function renderStream(){
       </div></div>`);
   });
   box.scrollTop = box.scrollHeight;
+  if(session.phase==='explore' && session.cycleStarted){ const fb = $('#chat-finish'); if(fb){ const done = (session.strategies||[]).length && session.strategies.every(id=>(session.stratDone||{})[id] || ((session.stratRounds||{})[id]||0) >= 2); fb.textContent = done ? '✅ 고른 방법을 다 해 봤어요! 이야기 끝내기 → 돌아보기' : '이야기 끝내기 → 돌아보기'; fb.classList.toggle('btn-primary', !!done); } }
+  saveDraft();
 }
 const UNDERSTAND_LEVELS = [
   { n:1, emoji:'😵', label:'아직 하나도 모르겠어요' },
@@ -3968,6 +4047,7 @@ function syncReflectA(){
   // 가짓수 제한은 없앴다. 최소한 하나는 골라야 다음으로 갈 수 있게만 해서, 아무것도 안 고르고
   // 그냥 넘어가는 것만 막는다.
   $('#reflect-next-a').disabled = total>0 && (self+ai_)===0;
+  const rg = $('#reflect-gate'); if(rg) rg.textContent = $('#reflect-next-a').disabled ? '👈 왼쪽 목록에서 내 말 옆의 [내가 생각]·[AI에게 맡김]을 하나 이상 눌러요' : '';
 }
 function enterReflect(){
   session.phase='wrap';
@@ -4115,6 +4195,7 @@ function commitSession(){
   // upsert by id
   const i = acc.sessions.findIndex(s=>s.id===session.id);
   if(i>=0) acc.sessions[i] = session; else acc.sessions.push(session);
+  acc.draft = null;
   flushSave();
 }
 
@@ -4209,6 +4290,8 @@ function renderResidualQuiz(){
 function syncResSubmit(){
   const ok = residualValid();
   $('#res-submit').disabled = !ok; $('#res-warn').hidden = ok;
+  if(!ok){ const miss = []; session.residual.items.forEach((it,i)=>{ if((it.a||'').trim().length < (it.type==='mcq'?1:2)) miss.push(`${i+1}번 ${it.type==='mcq'?'답 고르기':'풀이'}`); if((it.e||'').trim().length<2) miss.push(`${i+1}번 설명`); });
+    $('#res-warn').textContent = '⚠ 아직 안 쓴 곳: ' + miss.join(', ') + ' — 다 쓰면 [내고 비교 보기]가 켜져요.'; }
 }
 function residualValid(){
   return session.residual.items.length===4 && session.residual.items.every(it => (it.a||'').trim().length>=(it.type==='mcq'?1:2) && (it.e||'').trim().length>=2);
@@ -4364,7 +4447,10 @@ function init(){
     try{ await apiJSON('/api/auth', { method:'POST', body: JSON.stringify({ mode:'logout' }) }); }catch(e){}
     DB = { accounts:{}, currentUser:null }; session=null; switchAuthTab('login'); show('auth');
   });
-  $('#btn-new-session').addEventListener('click', ()=>{ stPicks=[]; $('#st-filter').value=''; $('#st-topic').value=''; $('#st-match-status').hidden=true; show('start'); });
+  $('#btn-new-session').addEventListener('click', (ev)=>{
+    const accD = account();
+    if(accD && accD.draft && !window.confirm('하던 공부가 남아 있어요. 새 공부를 시작하면 하던 공부는 지워져요. 그래도 새로 시작할까요?')){ ev.stopImmediatePropagation(); return; }
+    if(accD && accD.draft) clearDraft(); stPicks=[]; $('#st-filter').value=''; $('#st-topic').value=''; $('#st-match-status').hidden=true; show('start'); });
   $('#btn-seed-sample').addEventListener('click', seedSampleSessions);
   $('#btn-clear-sample').addEventListener('click', clearSampleSessions);
   $('#agg-analysis-btn').addEventListener('click', runHomeAnalysis);
@@ -4712,6 +4798,8 @@ function init(){
       const i = +aqA.dataset.i;
       if(session.prior.items[i]) session.prior.items[i].a = aqA.value;
       const btn = document.querySelector('.aq-submit');
+      { const g = document.querySelector('.aq-gate'); const miss = session.prior.items.map((it,k)=>(it.a||'').trim()?null:(k+1)+'번').filter(Boolean);
+        if(g){ g.textContent = miss.length ? `아직 안 한 문항: ${miss.join(', ')} — 모르면 "모르겠어요"라고 써도 돼요` : ''; } }
       if(btn) btn.disabled = !activationQuizValid();
       return;
     }
@@ -4816,6 +4904,9 @@ function init(){
   });
   $('#reflect-next-b').addEventListener('click', goToResidual);
 
+  // (사용성) 이유 안내를 누르면 해야 할 곳으로 이동
+  $('#st-gate').addEventListener('click', ()=>{ const t = stPicks.length ? $('#st-confirm') : $('#st-topic'); if(t){ t.scrollIntoView({behavior:'smooth', block:'center'}); if(t.focus) t.focus(); } });
+  $('#stream').addEventListener('click', e=>{ if(e.target.closest('.aq-gate')){ const el = [...document.querySelectorAll('.aq-a')].find(x=>!x.value.trim()) || document.querySelector('.aq-mcq'); if(el) el.scrollIntoView({behavior:'smooth', block:'center'}); } });
   $('#gs-source').addEventListener('click', ()=>{ if(session) modalHTML('📚 AI가 참고하는 근거 자료', sourceHTML()); });
   $('#res-start').addEventListener('click', startResidual);
   $('#res-items').addEventListener('click', e=>{

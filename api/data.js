@@ -34,7 +34,9 @@ export default async function handler(req, res) {
       const doc = JSON.stringify({
         nickname: nick,
         created: body.created || new Date().toISOString(),
-        sessions: body.sessions
+        sessions: body.sessions,
+        // (사용성) 진행 중인 세션 임시 저장본 — 새로고침·탭 닫힘 뒤 이어서 하기
+        draft: body.draft && typeof body.draft === 'object' ? body.draft : null
       });
       if (doc.length > 1_500_000) { res.status(413).json({ error: '저장할 내용이 너무 많아요.' }); return; }
       await kvSet(dKey, doc);
