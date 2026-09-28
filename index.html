@@ -1442,7 +1442,54 @@ let _saveTimer = null;
 
 function account(){ return DB.accounts[DB.currentUser] || null; }
 
+/* ===== 로컬 테스트 모드 =====
+   index.html을 파일로 바로 열었을 때(file://) 또는 주소에 ?local 을 붙였을 때만 켜진다.
+   Google Sheets·서버 없이, 계정/학습 기록은 이 브라우저에만 저장하고, AI는 내 Upstage 키로
+   브라우저에서 직접 호출한다(Upstage API는 CORS를 허용함). 배포된 사이트 동작에는 영향이 없다. */
+const LOCAL_MODE = location.protocol==='file:' || new URLSearchParams(location.search).has('local');
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+function localApi(path, opts){
+  const method = (opts && opts.method) || 'GET';
+  const body = opts && opts.body ? JSON.parse(opts.body) : {};
+  const cur = lsGet('localtest.current');
+  const dataOf = nick => { try{ return JSON.parse(lsGet('localtest.data.'+nick)); }catch(e){ return null; } };
+  if(path==='/api/auth'){
+    if(body.mode==='logout'){ lsDel('localtest.current'); return { ok:true }; }
+    const nick = String(body.nickname||'').trim(); const pin = String(body.pin||'');
+    if(!nick) throw new Error('이름을 적어 주세요.');
+    const users = JSON.parse(lsGet('localtest.users')||'{}');
+    if(body.mode==='signup'){
+      if(users[nick]) throw new Error('이미 있는 이름이에요. [이미 만들었어요]로 들어가 주세요.');
+      users[nick] = pin; lsSet('localtest.users', JSON.stringify(users));
+      const data = { nickname:nick, created:new Date().toISOString(), sessions:[] };
+      lsSet('localtest.data.'+nick, JSON.stringify(data)); lsSet('localtest.current', nick);
+      return { nickname:nick, data };
+    }
+    if(!(nick in users)) throw new Error('아직 없는 이름이에요. [처음이에요]에서 먼저 만들어 주세요.');
+    if(users[nick]!==pin) throw new Error('그림 비밀번호가 달라요.');
+    lsSet('localtest.current', nick);
+    return { nickname:nick, data: dataOf(nick) || { nickname:nick, created:new Date().toISOString(), sessions:[] } };
+  }
+  if(path==='/api/data'){
+    if(!cur) throw new Error('먼저 공부방에 들어와 주세요.');
+    if(method==='GET') return { nickname:cur, data: dataOf(cur) || { nickname:cur, created:new Date().toISOString(), sessions:[] } };
+    lsSet('localtest.data.'+cur, JSON.stringify({ nickname:cur, created:body.created, sessions:body.sessions }));
+    return { ok:true };
+  }
+  throw new Error('로컬 테스트 모드에서는 쓸 수 없는 기능이에요(' + path + ').');
+}
+function ensureLocalKey(force){
+  let k = lsGet('UPSTAGE_API_KEY');
+  if(force || !k){
+    const v = window.prompt('로컬 테스트 모드: Upstage API 키를 붙여 넣어 주세요(up_로 시작).\n이 브라우저에만 저장돼요.', k||'');
+    if(v && v.trim()){ k = v.trim(); lsSet('UPSTAGE_API_KEY', k); }
+  }
+  return k;
+}
 async function apiJSON(path, opts){
+  if(LOCAL_MODE) return localApi(path, opts);
   const r = await fetch(path, Object.assign({
     headers:{ 'Content-Type':'application/json' },
     credentials:'same-origin'
@@ -1468,6 +1515,7 @@ async function flushSave(){
 window.addEventListener('beforeunload', ()=>{
   if(!_saveTimer) return;
   const acc = account(); if(!acc) return;
+  if(LOCAL_MODE){ try{ localApi('/api/data', { method:'PUT', body: JSON.stringify({ created:acc.created, sessions:acc.sessions }) }); }catch(e){} return; }
   try{
     navigator.sendBeacon('/api/data', new Blob(
       [JSON.stringify({ created:acc.created, sessions:acc.sessions })], { type:'application/json' }));
@@ -4196,7 +4244,8 @@ function deltaChip(kind,label){
 // temperature 0으로 부른다(재채점 때마다 점수가 흔들리던 문제 — 측정 신뢰도).
 async function callLLM(messages, opts){
   opts = opts || {};
-  const localKey = (function(){ try{ return localStorage.getItem('UPSTAGE_API_KEY')||''; }catch(e){ return ''; } })();
+  const localKey = LOCAL_MODE ? (ensureLocalKey(false)||'') : (function(){ try{ return localStorage.getItem('UPSTAGE_API_KEY')||''; }catch(e){ return ''; } })();
+  if(LOCAL_MODE && !localKey && !FIXED_API_KEY) throw new Error('Upstage API 키가 없어요. 화면 위 "🔑 키 바꾸기"를 눌러 넣어 주세요.');
   const key = FIXED_API_KEY || localKey;
   const url = key ? 'https://api.upstage.ai/v1/chat/completions' : '/api/chat';
   const headers = { 'Content-Type':'application/json' };
@@ -4213,7 +4262,17 @@ function parseJSON(s){ const m = s.match(/\{[\s\S]*\}/); return JSON.parse(m ? m
 /* ============================================================
    wiring
    ============================================================ */
+function showLocalBanner(){
+  if(!LOCAL_MODE) return;
+  const b = document.createElement('div');
+  b.id = 'local-banner';
+  b.style.cssText = 'position:sticky;top:0;z-index:999;background:#fff7ed;color:#9a3412;border-bottom:1px solid #fed7aa;font-size:12.5px;padding:6px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap';
+  b.innerHTML = '🧪 <b>로컬 테스트 모드</b> — 기록은 이 브라우저에만 저장되고, AI는 내 Upstage 키로 직접 호출해요. <button type="button" id="local-key-btn" style="border:1px solid #fdba74;background:#fff;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer">🔑 키 바꾸기</button>';
+  document.body.prepend(b);
+  $('#local-key-btn').addEventListener('click', ()=>ensureLocalKey(true));
+}
 function init(){
+  showLocalBanner();
   buildSlots(); buildPalette(); refreshReels();
 
   $('#auth-tabs').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) switchAuthTab(b.dataset.t); });
