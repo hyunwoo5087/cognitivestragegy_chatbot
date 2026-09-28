@@ -322,6 +322,12 @@ ${lines}`;
     const raw = await upstage([{ role: 'system', content: '반드시 순수 JSON만 출력한다. 문자열 값 안에서는 큰따옴표(")를 쓰지 말고 작은따옴표(\')만 쓴다.' }, { role: 'user', content: prompt }], a ? 0.2 : 0);
     try { return parseJSONLoose(raw); } catch (e) {
       lastErr = e;
+      // 부분 복구: 점수 객체만이라도 살린다(근거·문제 목록은 가능한 만큼)
+      const sm = raw.match(/"scores"\s*:\s*(\{[^{}]*\})/);
+      if (sm) { try {
+        const out = { scores: JSON.parse(sm[1]), evidence: {}, issues: [], suggestions: [], partial: true };
+        for (const key of ['issues', 'suggestions']) { const m = raw.match(new RegExp('"' + key + '"\\s*:\\s*\\[([\\s\\S]*?)\\]')); if (m) out[key] = (m[1].match(/"((?:[^"\\\\]|\\\\.)*)"/g) || []).map(x => x.slice(1, -1)).slice(0, 4); }
+        return out; } catch (_) {} }
       try { return parseJSONLoose(raw.replace(/(:\s*"[^"\n]*?)"([^"\n]*?)"([^"\n]*?")/g, "$1'$2'$3")); } catch (_) {}
     }
   }
