@@ -1,5 +1,8 @@
 {
   "framework": null,
   "buildCommand": null,
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "regions": [
+    "icn1"
+  ]
 }
