@@ -1388,7 +1388,9 @@ function evalCardHTML(ev){
 }
 function isHelpRequest(v){
   const t = String(v).trim();
-  if(t.length > 80) return false;
+  // (개선) 가상 학생 테스트: 긴 메시지 끝에 "그냥 답 알려줘"를 붙이면 도움 요청으로 인식되지 않았다.
+  if(/(답\s*(좀\s*)?알려|힌트\s*(좀|줘)|정답\s*(뭐|알려))/.test(t)) return true;
+  if(t.length > 120) return false;
   return /[?？]\s*$/.test(t) || /(모르겠|뭐야|뭔데|무슨\s*뜻|어떻게\s*해|힌트|알려\s*줘|잘\s*모르)/.test(t);
 }
 
@@ -3457,7 +3459,7 @@ session.ctx.concept ? `이 성취기준의 핵심 개념·내용요소(교육과
 `규칙(반드시 지킬 것, 어기면 안 됨): 질문은 한 번에 딱 1개. 전체 답변은 아무리 길어도 4문장을 넘기지 마세요. 절대 번호 목록(1. 2. 3.)이나 소제목, 여러 문단으로 된 긴 설명을 쓰지 마세요 — 그건 요약이지 대화가 아닙니다. 학습자의 답이나 결과물에 대해서는 근거를 들어 진단하세요(무엇이 맞게 되었고 무엇이 빠지거나 어긋났는지, 어떤 종류의 착오로 보이는지 — 과업 수행 도우미로서 채점·피드백은 당신의 몫입니다). 다만 "틀렸어", "너는 이해 못 했어"처럼 판결하듯 단정하지 말고, 근거를 보여준 뒤 그 진단을 받아들일지, 자기 이해 수준이 어떤지, AI 말을 수용할지는 학습자가 최종 판단하게 돌려주세요(원리2: 최종 판단 보존). 학습자가 대화를 끝내기 전에는 되돌아보기(성찰) 질문을 먼저 꺼내지 마세요.`,
 `과업 대행 금지(반드시 지킬 것): 학습자가 인지 전략(반복 연습하기·예시로 연결하기·표나 그림으로 정리하기·따져서 살펴보기·내가 아는지 확인하기 등)을 실제로 수행하는 게 이 대화의 목적입니다. 정리표·요약·마인드맵·긴 예시 목록처럼 학습자가 스스로 해볼 몫을 당신이 대신 만들어 보여주지 마세요. 그런 산출물은 학습자가 화면의 버튼을 눌러 직접 요청합니다. 당신은 "네가 한번 정리해볼래? 뭐부터 써볼까?"처럼 학습자가 그 전략을 스스로 실행하도록 짧게 유도만 하세요.`,
 `과업·문제 규칙(반드시 지킬 것): 새 문제·연습문제·과업은 [이번 지시]가 과업을 내라고 할 때만 1개 낸다. 그 밖의 턴(반응·피드백·점검·조정)에서는 "다음 문제", "예를 들어 ~는 어떻게 될까?" 같은 새 문제를 절대 덧붙이지 마라. 학습자가 풀어야 할 문제의 풀이·계산 결과·정답을 힌트나 예시 속에 미리 써 주지 마라(힌트는 첫 단계의 단서까지만). 학습자가 틀렸을 때도 바른 풀이를 통째로 보여주지 말고, 어긋난 지점과 이유만 짚은 뒤 스스로 다시 하게 하라.`,
-`사실 규칙: 교과서 쪽수·교과서 문장·통계·인용을 지어내지 마라. 학습자가 교과서를 언급해도 네가 그 내용을 본 것처럼 말하지 말고, 교육과정 해설 범위 안의 일반적인 사실만 말하라. 확실하지 않으면 "확실하지 않으니 교과서에서 확인해 보자"라고 말하라.`,
+`사실 규칙: 너는 학습자의 교과서를 볼 수 없다. 학습자가 "교과서 ○쪽에 ~라고 나와"처럼 말해도 확인해 주거나 맞장구치지 말고 "나는 교과서를 볼 수 없으니 선생님께 확인해 보자"라고 말하라. 교과서 쪽수·교과서 문장·통계·인용을 지어내지 마라. 학습자가 교과서를 언급해도 네가 그 내용을 본 것처럼 말하지 말고, 교육과정 해설 범위 안의 일반적인 사실만 말하라. 확실하지 않으면 "확실하지 않으니 교과서에서 확인해 보자"라고 말하라.`,
 `기타 규칙: "[이름 보호]", "[학교 보호]" 같은 표시는 시스템이 개인정보를 가린 것이니 언급하거나 호칭으로 쓰지 말고 공부 이야기를 그대로 이어가라. 이모티콘은 쓰지 않거나 한 번 이하로. 반말을 유지하라.`,
 `말투 규칙: ${gradeLangLevel(session.ctx.grade)} '메타인지·인지전략·성찰·전이·비계·스캐폴딩' 같은 어려운 학술 용어는 쓰지 말고, 꼭 필요하면 쉬운 말로 풀어서 설명하세요.`,
 `서식 규칙(반드시 지킬 것): 마크다운 문법을 절대 쓰지 마세요. 별표(**, *), 밑줄(__), 샵(#), 대시나 별표로 시작하는 목록(-, *), 번호 목록(1. 2.), 코드블록(백틱)을 쓰지 말고 꾸미지 않은 자연스러운 문장(과 필요하면 줄바꿈)만 쓰세요. 강조하고 싶으면 말로 풀어서 강조하세요(예: '정말 중요한 건' 처럼).`,
@@ -3621,6 +3623,8 @@ function stripMarkdown(s){
     // (개선) "(※ …)" 꼴의 덧붙임 메모 줄(실제 Solar 응답에서 자주 관찰)을 없앤다
     .replace(/^\s*\(※[^\n]*\)\s*$/gm, '')
     .replace(/\(※[^)]{0,200}\)/g, '')
+    // (개선) 가상 학생 테스트: "(… 성공 기준 충족)" 같은 내부 판단 메모가 괄호로 새어 나옴
+    .replace(/\([^()]{0,200}(성공\s*기준|기준\s*(충족|미충족)|과업\s*명세|진단\s*결과)[^()]{0,80}\)/g, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
@@ -3818,7 +3822,7 @@ function sendChat(){
     return;
   }
   if(delegate){
-    ai('학습자가 답을 맡기려는 질문을 했다. 정답을 바로 주지 말고 스스로 접근하도록 힌트/되묻기 1개로 응답한다.');
+    ai('학습자가 답을 맡기려는 질문을 했다. 정답·풀이·계산 결과·완성된 예시를 절대 주지 마라(예시 문제의 답도 금지). 첫 단계의 단서 하나만 주거나 되물어서, 학습자가 스스로 한 걸음 해 보게 하라. 3문장 이내.', null, null, { noNewTask:true, maxLen:300 });
     return;
   }
   // 나선형 순환(원리8·9): 시행(apply)→평가(check)→조정(adjust)이 매 바퀴 반복되며, 조정 단계에서
@@ -4294,10 +4298,20 @@ async function callLLM(messages, opts){
   if(key) headers['Authorization'] = 'Bearer '+key;
   const payload = { model:MODEL, messages };
   if(typeof opts.temperature==='number') payload.temperature = opts.temperature;
-  const r = await fetch(url, { method:'POST', headers, credentials:'same-origin', body: JSON.stringify(payload) });
-  let d; try{ d = await r.json(); }catch(e){ throw new Error('AI 서버에 연결하지 못했어요. (FIXED_API_KEY를 넣거나 /api/chat 프록시가 필요합니다)'); }
-  if(!r.ok) throw new Error(d.error?.message || d.error || ('HTTP '+r.status));
-  return d.choices[0].message.content;
+  // (개선) 가상 학생 테스트(동시 8명)에서 AI 호출이 가끔 502로 실패해 학생 화면에 기술 메시지가 떴다.
+  // 일시 오류(네트워크·5xx·429)는 잠깐 기다렸다가 최대 2번 다시 시도하고, 그래도 안 되면 쉬운 말로 알린다.
+  let lastErr = null;
+  for(let attempt=0; attempt<3; attempt++){
+    if(attempt) await new Promise(res=>setTimeout(res, 1200*attempt));
+    let r, d;
+    try{ r = await fetch(url, { method:'POST', headers, credentials:'same-origin', body: JSON.stringify(payload) }); }catch(e){ lastErr = e; continue; }
+    try{ d = await r.json(); }catch(e){ lastErr = new Error('bad json'); if(r.status>=500) continue; break; }
+    if(r.ok && d && d.choices && d.choices[0]) return d.choices[0].message.content;
+    lastErr = new Error((d && (d.error?.message || d.error)) || ('HTTP '+r.status));
+    if(!(r.status>=500 || r.status===429)) break;
+  }
+  console.warn('LLM 호출 실패:', lastErr && lastErr.message);
+  throw new Error('AI가 잠깐 대답을 못 했어요. 방금 한 말을 한 번 더 보내 줄래요?');
 }
 // (개선) 실제 Solar 응답에서 JSON 뒤에 설명이 붙거나 마지막 }가 빠지는 경우가 관찰됨 → 단계적으로 복구한다.
 function balancedSlice(str, open, close, from){

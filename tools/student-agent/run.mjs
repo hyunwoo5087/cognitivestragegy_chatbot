@@ -64,7 +64,7 @@ async function runOne(personaId, scenarioId) {
   page.on('pageerror', e => metrics.errors.push('pageerror: ' + e.message));
   page.on('console', m => { if (m.type() === 'error' && !/401/.test(m.text())) metrics.errors.push('console: ' + m.text()); });
   page.on('dialog', d => d.dismiss());
-  const idle = async () => { await page.waitForFunction(() => typeof busy !== 'undefined' && !busy && !document.querySelector('#pending'), null, { timeout: 180000 }); await page.waitForTimeout(250); };
+  const idle = async () => { if (await page.locator('#scrim.open').count()) { note('⚠ 팝업:', await page.$eval('#modal-title', e => e.textContent)); await page.click('#modal-ok'); } await page.waitForFunction(() => typeof busy !== 'undefined' && !busy && !document.querySelector('#pending'), null, { timeout: 180000 }); await page.waitForTimeout(250); if (await page.locator('#scrim.open').count()) { note('⚠ 팝업:', await page.$eval('#modal-title', e => e.textContent)); await page.click('#modal-ok'); } };
   const S_ = fn => page.evaluate(fn);
   const recentDialog = async (n = 6) => S_(n => session.turns.filter(t => (t.role === 'me' || t.role === 'ai') && t.text).slice(-n).map(t => (t.role === 'me' ? '나: ' : 'AI: ') + t.text).join('\n'), n);
   const lastAi = async () => S_(() => { const t = [...session.turns].reverse().find(x => x.role === 'ai' && x.text); return t ? t.text : ''; });
@@ -289,11 +289,14 @@ async function judge(res, P, S) {
     if (t.role === 'ai') {
       if (t.structured) return `AI: [활동판 ${t.structured.type}]`;
       let x = `AI: ${t.text}`;
+      if (t.judge === 'comment' && t.comment) x += `\n   [학생의 반박(다른 생각)] ${t.comment}`;
       if (t.taskId && tasks[t.taskId]) x += `\n   [과업 명세] ${tasks[t.taskId].task} / 기준: ${tasks[t.taskId].criteria.join('; ')}`;
       if (t.evalId && tasks[t.evalTaskId]) { const e = tasks[t.evalTaskId].evals.find(v => v.id === t.evalId); if (e) x += `\n   [진단 카드] 수준 ${e.level} / 해낸 점: ${e.met.join('; ')} / 더 볼 점: ${e.missing.join('; ')} / 착오: ${e.errorType}`; }
       return x;
     }
     if (t.kind === 'checkpoint' && t.answered) return `[이해도 체크 ${t.score}/5: ${t.reason}]`;
+    if (t.kind === 'activate-quiz' && s.prior && s.prior.items) return '[사전 확인 문항과 채점] ' + s.prior.items.map((it, i) => `${i + 1}.${it.tag}: ${it.q}${it.options ? ' (보기: ' + it.options.join('/') + ', 정답키: ' + it.key + ')' : ''} → 학생 답: ${it.a} → ${it.score}점 ${it.note || ''}`).join(' | ') + ` / 자신감 ${s.prior.score}/5`;
+    if (t.kind === 'meta-score' && t.meta) return `[메타인지 점검 채점] 이해 ${t.meta.understand} · 전략 ${t.meta.strategy} · 연결 ${t.meta.connect} (평소 공부법: ${s.meta && s.meta.usualMethod})`;
     if (t.kind === 'fade-propose') return `[도움 줄이기 제안 → ${t.answered ? (t.accepted ? '수락' : '거절') : '미응답'}]`;
     return t.text ? `[안내] ${t.text}` : '';
   }).filter(Boolean).join('\n').slice(-24000);
@@ -310,11 +313,19 @@ async function judge(res, P, S) {
  P10 응답 검증: 학생 반박·이의에 적절히 대응했나(해당 없으면 null)
  Q 대화 품질: 학년 수준 말투, 적절한 길이, 사실 오류 없음, 흐름 자연스러움
 각 항목에 점수와 근거 인용(짧게)을 달고, 가장 심각한 문제 3개와 개선 제안을 써라.
-{"scores":{"P1":3,"P2":3,"P6":3,"P7":3,"P8":3,"P9":3,"P10":null,"Q":3},"evidence":{"P1":"...","P2":"...","P6":"...","P7":"...","P8":"...","P9":"...","P10":"...","Q":"..."},"issues":["...","...","..."],"suggestions":["...","..."]}
+점수 기준: 5=원리를 거의 완벽히 구현, 4=사소한 흠, 3=절반쯤 구현·뚜렷한 문제 있음, 2=자주 어긋남, 1=원리에 반함. 항목마다 독립적으로 판단하고, 모든 항목에 같은 점수를 주지 마라(차이가 있으면 반드시 드러내라). 사실 오류(없는 교과서 쪽수·통계를 사실처럼 확인해 주는 것 등)는 Q에서 크게 감점하라.
+출력 형식(점수 자리에는 1~5 정수, 해당 없으면 null): {"scores":{"P1":정수,"P2":정수,"P6":정수,"P7":정수,"P8":정수,"P9":정수,"P10":정수또는null,"Q":정수},"evidence":{"P1":"근거 인용",...},"issues":["가장 심각한 문제 1","2","3"],"suggestions":["개선 제안 1","2"]}
 --- 세션 기록 ---
 ${lines}`;
-  const raw = await upstage([{ role: 'system', content: '반드시 순수 JSON만 출력한다.' }, { role: 'user', content: prompt }], 0);
-  return parseJSONLoose(raw);
+  let lastErr;
+  for (let a = 0; a < 3; a++) {
+    const raw = await upstage([{ role: 'system', content: '반드시 순수 JSON만 출력한다. 문자열 값 안에서는 큰따옴표(")를 쓰지 말고 작은따옴표(\')만 쓴다.' }, { role: 'user', content: prompt }], a ? 0.2 : 0);
+    try { return parseJSONLoose(raw); } catch (e) {
+      lastErr = e;
+      try { return parseJSONLoose(raw.replace(/(:\s*"[^"\n]*?)"([^"\n]*?)"([^"\n]*?")/g, "$1'$2'$3")); } catch (_) {}
+    }
+  }
+  throw lastErr;
 }
 
 // ---------- 보고서 ----------
@@ -339,6 +350,12 @@ function report(all) {
   return md;
 }
 
+if (args.rejudge) {
+  const files = fs.readdirSync(OUT).filter(f => f.endsWith('.json'));
+  const all = [];
+  for (const f of files) { const r = JSON.parse(fs.readFileSync(path.join(OUT, f), 'utf8')); try { r.judge = await judge(r, PERSONAS[r.persona], SCENARIOS[r.scenario]); } catch (e) { r.judge = { error: String(e).slice(0, 200) }; } fs.writeFileSync(path.join(OUT, f), JSON.stringify(r, null, 1)); all.push(r); console.log(f, JSON.stringify(r.judge.scores || r.judge)); }
+  console.log(report(all)); process.exit(0);
+}
 const jobs = []; for (const p of personas) for (const s of scenarios) jobs.push([p, s]);
 const PAR = +(args.parallel || 2);
 const all = [];
