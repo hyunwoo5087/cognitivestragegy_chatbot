@@ -410,3 +410,9 @@ git push -u origin main
 17. (원리10) 준비 단계에서도 '다른 생각'에 응답. "왜 이렇게 말했어?"는 실제 시스템 지시와 교육과정 근거에 기반해 설명.
 18. (원리11) 성찰 발문에 "다음엔 내 질문을 늘리려면?"을 추가.
 19. **보안** — `/api/chat`, `/api/ocr`에 로그인 쿠키 인증, 모델·temperature·요청 크기 제한.
+
+### v28 — 새로 배포할 때 저장소 선택 (Google 시트 없이도 가능)
+`api/_store.js`는 Google 시트 변수 3개가 있으면 시트를, 없으면 **Upstash Redis**를 저장소로 쓴다.
+새 Vercel 프로젝트에서는 대시보드 **Storage → Create Database → Upstash for Redis(Free) → Connect** 만 누르면
+`KV_REST_API_URL`·`KV_REST_API_TOKEN`이 자동 등록된다. 그 밖에 필요한 환경변수는 `UPSTAGE_API_KEY`, `AUTH_SECRET` 두 개뿐.
+손글씨 인식(Cloud Vision)은 Google 설정이 있을 때만 동작한다.

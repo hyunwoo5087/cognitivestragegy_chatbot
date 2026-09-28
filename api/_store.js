@@ -19,12 +19,39 @@
 import crypto from 'node:crypto';
 
 export const SECRET = process.env.AUTH_SECRET || '';
+// (v28) 저장소를 둘 중 하나로 쓸 수 있다. Google 시트 설정(3개 변수)이 있으면 시트, 없으면
+// Upstash Redis(Vercel 대시보드 Storage → Upstash Redis 연결 시 KV_REST_API_URL/TOKEN 또는
+// UPSTASH_REDIS_REST_URL/TOKEN이 자동 등록됨). 새로 배포하는 사람이 서비스 계정 없이도 쓸 수 있게 하려는 것.
+const hasSheets = () => !!(process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY && process.env.GOOGLE_SHEET_ID);
+const redisUrl = () => process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
+const redisToken = () => process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
+const hasRedis = () => !!(redisUrl() && redisToken());
 export function ready() {
   return {
-    store: !!(process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY && process.env.GOOGLE_SHEET_ID),
+    store: hasSheets() || hasRedis(),
+    backend: hasSheets() ? 'sheets' : hasRedis() ? 'redis' : null,
+    vision: hasSheets(),
     secret: !!SECRET
   };
 }
+async function redisCmd(args) {
+  const resp = await fetch(redisUrl(), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${redisToken()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(args)
+  });
+  const data = await resp.json();
+  if (!resp.ok || data.error) throw new Error('Redis 오류: ' + (data.error || resp.status));
+  return data.result;
+}
+export async function kvGet(key) { return hasSheets() ? sheets_kvGet(key) : redisCmd(['GET', key]); }
+export async function kvSet(key, value) { return hasSheets() ? sheets_kvSet(key, value) : redisCmd(['SET', key, value]); }
+export async function kvSetNX(key, value) {
+  if (hasSheets()) return sheets_kvSetNX(key, value);
+  const r = await redisCmd(['SET', key, value, 'NX']);
+  return r === 'OK' ? 'OK' : null;
+}
+export async function kvDel(key) { return hasSheets() ? sheets_kvDel(key) : redisCmd(['DEL', key]); }
 
 /* ---------- Google 서비스 계정 JWT → OAuth2 액세스 토큰 (웜 인스턴스 간 캐시) ---------- */
 let _token = null, _tokenExp = 0;
@@ -108,7 +135,7 @@ async function findUserRow(nickname) {
 }
 
 /* ---------- kv 인터페이스: auth.js·data.js는 이 4개 함수만 쓴다(키 접두사로 라우팅) ---------- */
-export async function kvGet(key) {
+async function sheets_kvGet(key) {
   await ensureSheets();
   if (key.startsWith('user:')) {
     const nick = key.slice(5);
@@ -136,7 +163,7 @@ export async function kvGet(key) {
   return null;
 }
 
-export async function kvSet(key, value) {
+async function sheets_kvSet(key, value) {
   await ensureSheets();
   if (key.startsWith('user:')) {
     const nick = key.slice(5);
@@ -174,7 +201,7 @@ export async function kvSet(key, value) {
 // 닉네임 중복 가입 방지용 "없을 때만 생성". Sheets엔 진짜 원자적 연산이 없어 read-then-append로
 // 흉내만 낸다 — 같은 닉네임으로 동시에 가입 요청이 오는 극히 드문 경우엔 경합이 있을 수 있다는
 // 점을 인지하고 쓴다(이 프로토타입 규모에선 허용 가능한 트레이드오프).
-export async function kvSetNX(key, value) {
+async function sheets_kvSetNX(key, value) {
   await ensureSheets();
   if (!key.startsWith('user:')) { await kvSet(key, value); return 'OK'; }
   const nick = key.slice(5);
@@ -185,7 +212,7 @@ export async function kvSetNX(key, value) {
   return 'OK';
 }
 
-export async function kvDel(key) {
+async function sheets_kvDel(key) {
   await ensureSheets();
   if (key.startsWith('user:')) {
     const row = await findUserRow(key.slice(5));
