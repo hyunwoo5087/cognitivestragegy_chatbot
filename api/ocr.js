@@ -5,7 +5,7 @@
 // getAccessToken)으로 Google Cloud Vision의 DOCUMENT_TEXT_DETECTION을 호출해 텍스트로 바꿔
 // 돌려준다. 별도의 Vision 전용 키를 새로 만들 필요 없이, GCP 콘솔에서 프로젝트에
 // "Cloud Vision API"만 추가로 사용 설정하면 된다(README 참고).
-import { ready, getAccessToken } from './_store.js';
+import { ready, getAccessToken, readToken, getCookie } from './_store.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
@@ -13,6 +13,11 @@ export default async function handler(req, res) {
   const r = ready();
   if (!r.store) {
     res.status(500).json({ error: '지금 손글씨 인식을 쓸 수 없어요(서버에 Google 자격증명이 설정되어 있지 않아요).' });
+    return;
+  }
+  // (개선) 로그인한 학습자만 쓸 수 있게 한다(유료 Vision API 남용 방지).
+  if (!r.secret || !readToken(getCookie(req, 'sess'))) {
+    res.status(401).json({ error: '먼저 공부방에 들어와 주세요.' });
     return;
   }
 
