@@ -1155,10 +1155,12 @@ const SUPPORT_STEPS = [
 ];
 /* 원리7(메타인지적 지식 점검): 이해질문·전략질문·연결질문을 서로 다른 발문 스캐폴딩으로
    명확히 구별해서 순서대로 묻는다(Kramarski & Mevarech, 2003). */
+// (개선) 실제 Solar 테스트에서 모델이 "거의 그대로 물어봐" 지시를 무시하고 설명·문제풀이로 새는 일이
+// 잦았다. 점검 질문(q)은 코드가 그대로 붙이고, 모델에게는 학습자 답에 대한 한 문장 반응만 맡긴다.
 const SCAFFOLD_ORDER = [
-  { key:'understand', instr:`[원리7-① 이해 스캐폴딩] 학습자는 바로 직전에 자신감을 이미 숫자(1~5)로 골랐다. 그 숫자를 또 묻지 말고, 거의 그대로 이렇게만 물어봐: "지금까지 이야기한 것 중에서 스스로 확신이 안 서는 부분이 있다면 어디야? 그 이유도 같이 말해줄래?" 질문은 1개만.` },
-  { key:'strategy',   instr:`[원리7-② 전략 스캐폴딩] 아래 예시 중 하나를 골라 거의 그대로 1개만 물어봐: "이 문제에 접근할 때 어떤 순서로 생각을 풀어갔는지 말해줄 수 있어? 그리고 그 방법을 선택한 이유는?" 또는 "지금 막혔다면, 이전에 비슷한 문제를 풀 때 썼던 방법 중에 적용해볼 만한 게 있을까?" 질문은 1개만.` },
-  { key:'connect',    instr:`[원리7-③ 연결 스캐폴딩] 아래 예시 중 하나를 골라 거의 그대로 1개만 물어봐: "이 내용을 지난 시간에 배운 개념과 연결 지어보면 어떤 공통점이나 차이점이 보여?" 또는 "이걸 네 일상이나 실제 사례에 적용해본다면 구체적으로 어떤 상황을 예로 들 수 있을까?" 질문은 1개만.` }
+  { key:'understand', q:'지금까지 이야기한 것 중에서 스스로 확신이 안 서는 부분이 있다면 어디야? 그 이유도 같이 말해줄래?', instr:`[원리7-① 이해 스캐폴딩] 학습자는 바로 직전에 자신감을 이미 숫자(1~5)로 골랐다. 그 숫자를 또 묻지 말고, 거의 그대로 이렇게만 물어봐: "지금까지 이야기한 것 중에서 스스로 확신이 안 서는 부분이 있다면 어디야? 그 이유도 같이 말해줄래?" 질문은 1개만.` },
+  { key:'strategy',   q:'이 내용을 공부할 때 너는 어떤 순서로 하면 좋을 것 같아? 그렇게 생각한 이유도 말해줄래?', instr:`[원리7-② 전략 스캐폴딩] 아래 예시 중 하나를 골라 거의 그대로 1개만 물어봐: "이 문제에 접근할 때 어떤 순서로 생각을 풀어갔는지 말해줄 수 있어? 그리고 그 방법을 선택한 이유는?" 또는 "지금 막혔다면, 이전에 비슷한 문제를 풀 때 썼던 방법 중에 적용해볼 만한 게 있을까?" 질문은 1개만.` },
+  { key:'connect',    q:'이 내용을 전에 배운 것이나 네 생활과 연결해 보면, 어떤 공통점이나 예가 떠올라?', instr:`[원리7-③ 연결 스캐폴딩] 아래 예시 중 하나를 골라 거의 그대로 1개만 물어봐: "이 내용을 지난 시간에 배운 개념과 연결 지어보면 어떤 공통점이나 차이점이 보여?" 또는 "이걸 네 일상이나 실제 사례에 적용해본다면 구체적으로 어떤 상황을 예로 들 수 있을까?" 질문은 1개만.` }
 ];
 const SUPPORT_LABEL = { high:'많이', mid:'보통', low:'조금' };
 const PHASES = { prep:'먼저 이야기', explore:'같이 알아가기', wrap:'마무리' };
@@ -1188,7 +1190,7 @@ const STRUCT_SCHEMAS = {
   table:   { shape:'{"type":"table","headers":["열1","열2","열3"],"bank":["재료1","재료2","재료3","재료4","재료5"]}',
              ask:s=>{
                const n = s.support==='low' ? '4~5개' : s.support==='mid' ? '5~6개' : '6~7개';
-               return `"${s.ctx.std}"와 관련해 표로 정리하면 좋을 열 이름(headers) 2~3개와, 표 칸에 채울 재료가 될 낱말·사실 후보(bank) ${n}개만 뽑아줘. 어느 후보를 어느 칸에 넣을지, 표를 어떻게 채울지는 절대 정하지 마 — 후보만 흩어서 준다. rows나 실제 배치는 만들지 마라.`;
+               return `"${s.ctx.std}"와 관련해 표로 정리하면 좋을 열 이름(headers) 2~3개와, 표 칸에 채울 재료가 될 낱말·사실 후보(bank) ${n}개만 뽑아줘. 계산 결과·정답·완성된 풀이는 재료에 넣지 마라(그건 학습자가 직접 구할 몫이다). 어느 후보를 어느 칸에 넣을지, 표를 어떻게 채울지는 절대 정하지 마 — 후보만 흩어서 준다. rows나 실제 배치는 만들지 마라.`;
              } },
   // 원리1 적응적 페이딩: AI 도움이 클수록(high) 후보 낱말을 더 많이, 학습자가 숙련될수록(low) 적게
   // 준다. 후보들 사이의 관계·순서·위계는 절대 제안하지 않는다 — 그건 학습자가 직접 판단할 몫이다.
@@ -1309,7 +1311,7 @@ async function generateTaskSpec(strat){
 이 방법의 과업 원칙: ${STRAT_TASK_GUIDE[strat.id]||strat.verb}
 도움 정도: ${session.support==='high'?'과업을 작게 쪼개고 첫 단서를 준다':session.support==='mid'?'방향만 준다':'과업만 주고 단서는 주지 않는다'}
 ${lastEval ? `직전 시도 진단: 빠진 점=${(lastEval.missing||[]).join(', ')||'없음'}, 착오 유형=${lastEval.errorType||'-'} — 이번 과업은 이 부분을 다시 다룰 수 있게 해라.` : ''}
-규칙: 과업은 지금까지 대화에서 다룬 실제 내용(아래 대화 이력)을 소재로 하고, 해설의 범위를 벗어나지 마라. 과업 1개만. 학습자가 할 몫(답·예시·정리 내용)을 과업 문장 안에 미리 써 주지 마라.
+규칙: 과업은 지금까지 대화에서 다룬 실제 내용(아래 대화 이력)을 소재로 하고, 해설의 범위를 벗어나지 마라. 과업 1개만, 학생이 한 번의 답으로 해낼 수 있는 크기로. 과업 문장 안에 정답·풀이·계산 결과·"예:" 예시 답을 절대 넣지 마라(학습자가 할 몫이다). 성공 기준은 학습자의 답에서 눈으로 확인할 수 있는 것으로, 각 20자 안팎.
 {"task":"학습자에게 줄 과업(한두 문장, 학년에 맞는 쉬운 말)","target":"이 과업이 다루는 핵심 내용","form":"결과물 형태","criteria":["성공 기준1","성공 기준2","성공 기준3"],"commonErrors":["예상 착오1","예상 착오2"]}`;
   const raw = await callLLM(buildMessages(sys, null, 10).concat([{ role:'user', content:'위 조건으로 과업 명세 JSON을 만들어라.' }]), { temperature:0.3 });
   const j = parseJSON(raw);
@@ -1345,7 +1347,7 @@ function taskById(id){ return (session.tasks||[]).find(x=>x.id===id) || null; }
 async function evaluateAttempt(spec, attemptText){
   const raw = await callLLM([
     { role:'system', content:'너는 학습 과업 진단 보조자다. 반드시 순수 JSON만 출력한다. 학습자가 실제로 쓴 내용에만 근거하고, 없는 내용을 지어내지 않는다.' },
-    { role:'user', content:`성취기준: ${session.ctx.std}\n교육과정 해설(정확성 판단 기준): ${session.ctx.concept||'-'}\n과업: ${spec.task}\n결과물 형태: ${spec.form}\n성공 기준: ${spec.criteria.map((c,i)=>`(${i+1}) ${c}`).join(' ')}\n예상 착오: ${spec.commonErrors.join(', ')||'-'}\n공부 방법: ${(STRATS.find(x=>x.id===spec.stratId)||{}).label||'-'}\n학습자의 시도: """${attemptText}"""\n\n각 성공 기준을 충족했는지 판단하고, 충족한 것(met)은 학습자가 쓴 낱말을 인용해 근거를 달아라. 빠지거나 어긋난 것(missing)도 근거와 함께 적어라. 착오 유형(errorType)은 다음 중 하나: ${ERROR_TYPES.join(', ')}. level은 0(대부분 미충족)/1(일부 충족)/2(대부분 충족). strategyUsed는 학습자가 이 공부 방법을 실제로 썼는지 true/false.\n{"met":["기준 요약 — 근거 인용"],"missing":["기준 요약 — 근거"],"errorType":"...","level":1,"strategyUsed":true}` }
+    { role:'user', content:`성취기준: ${session.ctx.std}\n교육과정 해설(정확성 판단 기준): ${session.ctx.concept||'-'}\n과업: ${spec.task}\n결과물 형태: ${spec.form}\n성공 기준: ${spec.criteria.map((c,i)=>`(${i+1}) ${c}`).join(' ')}\n예상 착오: ${spec.commonErrors.join(', ')||'-'}\n공부 방법: ${(STRATS.find(x=>x.id===spec.stratId)||{}).label||'-'}\n학습자의 시도: """${attemptText}"""\n\n각 성공 기준을 충족했는지 판단하라. met에는 학습자의 시도 속 글자로 직접 확인되는 것만 넣는다(추정·"전제로 함" 같은 관대한 해석 금지). 각 항목은 "기준 요약: 짧은 인용이나 근거" 꼴로 40자 이내, 초등학생도 읽을 쉬운 말로. 학습자가 이 과업이 아닌 다른 질문에 답했다면 그 사실을 missing에 적어라. 착오 유형(errorType)은 다음 중 하나: ${ERROR_TYPES.join(', ')}. level은 0(대부분 미충족)/1(일부 충족)/2(대부분 충족). strategyUsed는 학습자가 이 공부 방법을 실제로 썼는지 true/false.\n{"met":["기준 요약 — 근거 인용"],"missing":["기준 요약 — 근거"],"errorType":"...","level":1,"strategyUsed":true}` }
   ], { temperature:0 });
   const j = parseJSON(raw);
   if(!j || typeof j.level!=='number') throw new Error('eval shape');
@@ -1371,7 +1373,7 @@ function onTaskEvaluated(ev){
 function evalFeedbackInstr(spec, ev){
   const strat = STRATS.find(x=>x.id===spec.stratId);
   return `학습자가 방금 과업("${spec.task}")을 시도했다. 아래는 성공 기준에 비춘 진단이다(너만 참고). 충족: ${ev.met.join(' / ')||'없음'}. 빠진·어긋난 점: ${ev.missing.join(' / ')||'없음'}. 착오 유형(추정): ${ev.errorType}. 방법 사용: ${ev.strategyUsed?'씀':'안 씀'}.
-이 진단에 근거해 피드백하라: (1) 학습자가 실제로 쓴 낱말을 그대로 짚으며 잘한 점 1가지, (2) 빠지거나 어긋난 점이 있으면 1가지를 "내가 보기엔 ~ 부분이 ~해서 헷갈린 것 같아"처럼 이유와 함께 알려주되 정답을 통째로 불러주지 말고 고칠 단서만 줘라(착오 유형을 쉬운 말로), ${ev.strategyUsed?'':'(3) 답만 쓰고 '+(strat?strat.label:'고른 방법')+' 방법은 아직 안 썼다는 점도 짚어라, '}마지막으로 "이 진단에 동의해? 그리고 ${strat?strat.label:'이 방법'}이 이번에 도움이 됐어?"처럼 학습자가 스스로 판단하게 1개만 물어라. 진단을 판결처럼 단정하지 말고, 학습자가 반박할 수 있게 열어 둬라. 5문장 이내.`;
+이 진단에 근거해 피드백하라: (1) 학습자가 실제로 쓴 낱말을 그대로 짚으며 잘한 점 1가지, (2) 빠지거나 어긋난 점이 있으면 1가지를 "내가 보기엔 ~ 부분이 ~해서 헷갈린 것 같아"처럼 이유와 함께 알려주되 정답을 통째로 불러주지 말고 고칠 단서만 줘라(착오 유형을 쉬운 말로), ${ev.strategyUsed?'':'(3) 답만 쓰고 '+(strat?strat.label:'고른 방법')+' 방법은 아직 안 썼다는 점도 짚어라, '}마지막으로 "이 진단에 동의해? 그리고 ${strat?strat.label:'이 방법'}이 이번에 도움이 됐어?"처럼 학습자가 스스로 판단하게 1개만 물어라. 새 문제나 다음 과업은 절대 덧붙이지 마라(다음 과업은 시스템이 따로 낸다). 진단을 판결처럼 단정하지 말고, 학습자가 반박할 수 있게 열어 둬라. 5문장 이내.`;
 }
 function taskCardHTML(spec){
   return `<div class="task-card"><div class="tc-head">🎯 이번 과업에서 이렇게 하면 잘한 거예요</div><ul>${spec.criteria.map(c=>`<li>${esc(c)}</li>`).join('')}</ul></div>`;
@@ -2943,7 +2945,7 @@ async function reviewStruct(tid){
   } else {
     instr = `${onScreen} 학습자가 만든 내용: ${d.text}\n이 내용에서 학습자가 실제로 쓴 낱말을 최소 1개 그대로 짚어 잘한 점 1가지를 말하고, 빠졌거나 관계가 어색해 보이는 곳이 있으면 이유와 함께 1가지만 짚어 질문해라. 전체 5문장 이내, 질문은 최대 1개.`;
   }
-  await ai(instr, null, null, { maxLen:650 });
+  await ai(instr, null, null, { maxLen:650, noNewTask:true });
   const at = [...session.turns].reverse().find(x=>x.role==='ai' && !x.structured);
   if(at && ev){ at.evalId = ev.id; at.evalTaskId = spec.id; renderStream(); }
   if(nextStrat){
@@ -3196,7 +3198,8 @@ async function prepNext(){
     // 나 단계(스스로 점검)가 끝나면 곧바로 phase를 'explore'로 넘긴다. 다만 아직 방법을 고르고
     // 이유를 말하기 전이라 실제 순환(질문↔점검↔조정)은 시작하지 않는다(cycleStarted=false).
     session.prepStep='ready'; session.phase='explore'; paintPhase();
-    await gradeMeta(); // 원리7 타당도: 서술 답변을 루브릭으로 채점해 '메타인지 지식 점수'를 남긴다
+    busy = true; syncComposeLock(); showPending();
+    try{ await gradeMeta(); } finally { $('#pending')?.remove(); busy = false; syncComposeLock(); } // 원리7: 서술 답변을 루브릭으로 채점
     pushMetaScoreCard(); // 계산만 하고 안 보여주면 진단이 아니다 — 대화 흐름 안에 카드로 노출한다
     strategyPickMode = 'initial'; pendingStrategyPick = [];
     await ai(`바로 위에 뜬 "스스로 점검 결과" 카드를 짧게 언급하며 "너가 보기에도 이 결과가 맞는 것 같아?"라고만 가볍게 물어봐(점수가 맞다 틀리다는 네가 정하지 마, 학습자가 스스로 판단하게). 그런 다음 이어서 "이제 본격적으로 알아보자. 아래에서 오늘 쓸 공부 방법을 하나 이상 골라봐(여러 개 함께 써도 돼)."라고 안내해줘. 어려운 말은 쓰지 마.`, 'strategy-pick');
@@ -3255,13 +3258,16 @@ async function gradeDiagItems(items, extraTextFor){
   });
   const textItems = items.map((it,i)=>({it,i})).filter(x=>!(x.it.type==='mcq' && x.it.key!=null));
   if(!textItems.length) return true;
-  const raw = await callLLM([
+  const gradeMsgs = [
     { role:'system', content:'너는 채점 보조자다. 반드시 순수 JSON만 출력한다. 주어진 루브릭에만 근거하고, 길이·말투가 아니라 핵심 요소의 유무로 판단한다. "역량 부족" 같은 단정적 표현은 쓰지 않는다.' },
     { role:'user', content:`성취기준: "${session.ctx.std}"\n교육과정 해설(정확성 기준): ${session.ctx.concept||'-'}\n` +
       textItems.map(({it},n)=>`[${n+1}. ${it.tag}] 문항: ${it.q}\n 만점 기준: ${it.rubric?it.rubric.full:'핵심 개념을 정확하고 구체적으로 씀'}\n 부분 기준: ${it.rubric?it.rubric.partial:'핵심 일부만 맞음'}\n 학습자 답: ${it.a}${extraTextFor?extraTextFor(it):''}`).join('\n') +
       `\n각 답의 수준(level)을 0(기준 미충족)/1(부분 기준 충족)/2(만점 기준 충족) 중 하나로 정하고, 근거를 1문장으로 써라.\n{"items":[${textItems.map(()=>'{"level":1,"note":"..."}').join(',')}]}` }
-  ], { temperature:0 });
-  const j = parseJSON(raw);
+  ];
+  let j = null;
+  for(let attempt=0; attempt<2 && !(j && Array.isArray(j.items) && j.items.length===textItems.length); attempt++){
+    try{ j = parseJSON(await callLLM(gradeMsgs, { temperature:0 })); }catch(e){ j = null; }
+  }
   if(!j || !Array.isArray(j.items) || j.items.length!==textItems.length) throw new Error('grade shape');
   textItems.forEach(({it},n)=>{ const r=j.items[n]||{}; const lv = Math.max(0,Math.min(2,Math.round(+r.level))); it.score = Number.isFinite(lv) ? lv*50 : null; it.correct = it.score!=null ? it.score===100 : null; it.note = String(r.note||''); });
   return true;
@@ -3329,7 +3335,9 @@ async function submitActivationQuiz(turnId){
   // 열린 창에 학습자가 아무 메시지나 보내면 어느 prepStep 분기에도 안 걸려 조용히 씹히는 문제가
   // 있었다(가 단계는 더 이상 sendChat의 자유 텍스트 분기가 없어서).
   renderStream(); syncComposeLock();
-  await gradeActivationQuiz();
+  // (개선) 채점 중임을 보여 준다(실제 모델로 수 초 걸려 멈춘 것처럼 보였음)
+  busy = true; syncComposeLock(); showPending();
+  try{ await gradeActivationQuiz(); } finally { $('#pending')?.remove(); busy = false; syncComposeLock(); }
   renderStream();
   session.prepStep='priorscore'; session.pendingActivation = false; paintPhase();
   await ai(`바로 위에 뜬 "아는 것 확인" 결과 카드를 짧게 언급하며(점수가 맞다 틀리다는 네가 정하지 마, 학습자가 스스로 판단하게), 이어서 "지금 전체적으로 이 주제에 얼마나 자신 있는지 아래에서 골라볼래?"라고 안내해. 어려운 말은 쓰지 마.`, 'prior-pick');
@@ -3448,6 +3456,9 @@ session.ctx.concept ? `이 성취기준의 핵심 개념·내용요소(교육과
 `--- 여기부터는 실제 대화 규칙이다 ---`,
 `규칙(반드시 지킬 것, 어기면 안 됨): 질문은 한 번에 딱 1개. 전체 답변은 아무리 길어도 4문장을 넘기지 마세요. 절대 번호 목록(1. 2. 3.)이나 소제목, 여러 문단으로 된 긴 설명을 쓰지 마세요 — 그건 요약이지 대화가 아닙니다. 학습자의 답이나 결과물에 대해서는 근거를 들어 진단하세요(무엇이 맞게 되었고 무엇이 빠지거나 어긋났는지, 어떤 종류의 착오로 보이는지 — 과업 수행 도우미로서 채점·피드백은 당신의 몫입니다). 다만 "틀렸어", "너는 이해 못 했어"처럼 판결하듯 단정하지 말고, 근거를 보여준 뒤 그 진단을 받아들일지, 자기 이해 수준이 어떤지, AI 말을 수용할지는 학습자가 최종 판단하게 돌려주세요(원리2: 최종 판단 보존). 학습자가 대화를 끝내기 전에는 되돌아보기(성찰) 질문을 먼저 꺼내지 마세요.`,
 `과업 대행 금지(반드시 지킬 것): 학습자가 인지 전략(반복 연습하기·예시로 연결하기·표나 그림으로 정리하기·따져서 살펴보기·내가 아는지 확인하기 등)을 실제로 수행하는 게 이 대화의 목적입니다. 정리표·요약·마인드맵·긴 예시 목록처럼 학습자가 스스로 해볼 몫을 당신이 대신 만들어 보여주지 마세요. 그런 산출물은 학습자가 화면의 버튼을 눌러 직접 요청합니다. 당신은 "네가 한번 정리해볼래? 뭐부터 써볼까?"처럼 학습자가 그 전략을 스스로 실행하도록 짧게 유도만 하세요.`,
+`과업·문제 규칙(반드시 지킬 것): 새 문제·연습문제·과업은 [이번 지시]가 과업을 내라고 할 때만 1개 낸다. 그 밖의 턴(반응·피드백·점검·조정)에서는 "다음 문제", "예를 들어 ~는 어떻게 될까?" 같은 새 문제를 절대 덧붙이지 마라. 학습자가 풀어야 할 문제의 풀이·계산 결과·정답을 힌트나 예시 속에 미리 써 주지 마라(힌트는 첫 단계의 단서까지만). 학습자가 틀렸을 때도 바른 풀이를 통째로 보여주지 말고, 어긋난 지점과 이유만 짚은 뒤 스스로 다시 하게 하라.`,
+`사실 규칙: 교과서 쪽수·교과서 문장·통계·인용을 지어내지 마라. 학습자가 교과서를 언급해도 네가 그 내용을 본 것처럼 말하지 말고, 교육과정 해설 범위 안의 일반적인 사실만 말하라. 확실하지 않으면 "확실하지 않으니 교과서에서 확인해 보자"라고 말하라.`,
+`기타 규칙: "[이름 보호]", "[학교 보호]" 같은 표시는 시스템이 개인정보를 가린 것이니 언급하거나 호칭으로 쓰지 말고 공부 이야기를 그대로 이어가라. 이모티콘은 쓰지 않거나 한 번 이하로. 반말을 유지하라.`,
 `말투 규칙: ${gradeLangLevel(session.ctx.grade)} '메타인지·인지전략·성찰·전이·비계·스캐폴딩' 같은 어려운 학술 용어는 쓰지 말고, 꼭 필요하면 쉬운 말로 풀어서 설명하세요.`,
 `서식 규칙(반드시 지킬 것): 마크다운 문법을 절대 쓰지 마세요. 별표(**, *), 밑줄(__), 샵(#), 대시나 별표로 시작하는 목록(-, *), 번호 목록(1. 2.), 코드블록(백틱)을 쓰지 말고 꾸미지 않은 자연스러운 문장(과 필요하면 줄바꿈)만 쓰세요. 강조하고 싶으면 말로 풀어서 강조하세요(예: '정말 중요한 건' 처럼).`,
 `출력 규칙(반드시 지킬 것): 학습자에게 실제로 할 말(대화 문장)만 출력하세요. 설정값 요약, 메모, 괄호 안 라벨, "*지원강도: ...*" 같은 주석성 줄을 답변 끝이나 어디에도 덧붙이지 마세요.`,
@@ -3455,7 +3466,12 @@ session.ctx.concept ? `이 성취기준의 핵심 개념·내용요소(교육과
 `[이번 지시] ${instruction}`
   ].join('\n');
 }
-function hasListDump(s){ return [...String(s).matchAll(/(^|\n)\s*[1-9]\d?\.\s+/g)].length >= 2; }
+function hasListDump(s){
+  const t = String(s);
+  if([...t.matchAll(/(^|\n)\s*[1-9]\d?\.\s+/g)].length >= 2) return true;
+  // (개선) "· 항목" 글머리 줄이 3개 이상이면 정리 대행으로 본다(실제 Solar 응답에서 자주 관찰)
+  return [...t.matchAll(/(^|\n)\s*[·•\-]\s+/g)].length >= 3;
+}
 // 모델이 학습자에게 직접 말하는 대신, "(학습자가 ~하도록 유도)"·"만약 (1) 선택 시: …" 처럼
 // 다른 교사에게 설명하듯 자기 계획·조건분기를 그대로 출력해버리는 경우가 있다(실사용 관찰).
 // 그런 패턴을 감지해 hasListDump와 같은 방식으로 한 번 재시도한다.
@@ -3504,7 +3520,10 @@ async function ai(instruction, kind, structOffer, opts){
     if(checkpointWillFire(kind)){
       instruction += ' (중요: 이번 답변에서는 새로운 질문을 던지지 마라. 지금까지 이야기를 짧게 마무리하는 문장으로만 답해라. 바로 뒤에 이해도를 확인하는 카드가 화면에 따로 뜬다.)';
     }
-    const messages = buildMessages(sysPrompt(instruction));
+    // (개선) 실제 Solar 테스트: 긴 대화 이력 뒤에서는 시스템 프롬프트 끝의 [이번 지시]를 자주 무시했다.
+    // 같은 지시를 이력 맨 뒤에 한 번 더 시스템 메시지로 둔다(Solar에서 준수율이 눈에 띄게 오름).
+    const tail = { role:'system', content:`[이번 턴 지시 — 이것만 수행] ${instruction}\n(지키기: 지시에 없는 새 문제·과업 금지, 풀이·정답 미리 주기 금지, 마크다운·글머리표·표 금지, 4문장 이내, 반말)` };
+    const messages = buildMessages(sysPrompt(instruction)).concat([tail]);
     let text = await callLLM(messages);
     // 번호 목록 덩어리(=과업 대행)나 지시문·조건분기 노출(=계획 유출)이 보이면, 사후 필터로
     // 잘라내기 전에 "제대로 다시" 한 번 더 시도한다. 이렇게 안 하면 대화 흐름상 꼭 필요한
@@ -3512,7 +3531,7 @@ async function ai(instruction, kind, structOffer, opts){
     if(hasListDump(text) || hasMetaLeak(text) || hasTableDump(text)){
       try{
         const retrySys = sysPrompt(instruction + ' (경고: 방금 번호 목록·표(마크다운 파이프 |…|)로 정리해서 대신 만들어주거나, "(학습자가 ~하도록 유도)"·"만약 (1) 선택 시: …" 같은 지시문·조건문·괄호 설명으로 답하려 했다. 또는 "학습자가"처럼 3인칭으로 서술하거나(그건 속으로만 정리할 생각이다 — 학습자에게는 항상 "네가"라고 직접 말하라), 학습자가 아직 하지 않은 말을 "…라고 답했다고 치고" 지어내며 대화를 혼자 이어갔다. 또는 "(전략 카드 뜰 거야)"·"(비교 카드 뜰 거야)"처럼 화면에 뜰 것을 미리 말로 예고했다 — 화면 요소는 시스템이 알아서 붙이니 절대 미리 말하지 마라. 너는 지금 그 학습자와 직접 대화하고 있는 튜터이지, 다른 선생님에게 설명하는 게 아니고, 학습자가 스스로 정리할 몫을 대신 만들어줘도 안 된다. 그런 것 없이, 학습자에게 실제로 건넬 말 딱 1문장(질문 1개)만 다시 말하라.)');
-        const retryText = await callLLM(buildMessages(retrySys));
+        const retryText = await callLLM(buildMessages(retrySys).concat([tail]));
         if(!hasListDump(retryText) && !hasMetaLeak(retryText) && !hasTableDump(retryText)) text = retryText;
       }catch(e){ /* 재시도 실패 시 원래 text를 그대로 후처리 필터에 맡긴다 */ }
     }
@@ -3524,11 +3543,16 @@ async function ai(instruction, kind, structOffer, opts){
     // 지적(요청사항 5)을 받았다. 허락을 구하지 말고 바로 시켜보는 직접 지시 문구로 무작위로 고른다.
     const DIRECTIVE_LEADS = ['자, 이렇게 해보자.', '그럼 이번엔', '좋아, 바로 해보자.', '한번 해볼까 말고 바로 해보자 —'];
     const strat = currentApplyStrat();
-    const fallbackTail = strat && strat.tips && strat.tips.length
-      ? `${DIRECTIVE_LEADS[Math.floor(Math.random()*DIRECTIVE_LEADS.length)]} ${strat.tips[Math.floor(Math.random()*strat.tips.length)]}.`
-      : '지금까지 이야기한 걸 네 말로 한번 해보자.';
+    // (개선) 실제 테스트에서 팁 문구(명사형)를 이어 붙인 "그럼 이번엔 헷갈렸던 건 나중에 다시 답해보기." 같은
+    // 어색한 문장이 나왔다. 잘린 뒤에는 지금 과업(있으면)을 가리키는 자연스러운 한 문장만 붙인다.
+    const fallbackTail = session.currentTask ? '그럼 이번 과업을 네가 먼저 해 볼래?' : '지금까지 이야기한 걸 네 말로 한번 정리해 볼래?';
     const passKind = kind==='prior-pick' ? 'prior-pick' : (kind==='strategy-pick' ? 'strategy-pick' : (kind==='struct-offer' ? 'struct-offer' : null));
-    pushAi(scrubOutput(capLength(stripTaskDump(stripMetaLeak(stripLeakedParams(stripMarkdown(text))), fallbackTail), opts.maxLen || 420)), passKind, kind==='struct-offer' ? structOffer : null);
+    let cleaned = stripTaskDump(stripMetaLeak(stripLeakedParams(stripMarkdown(text))), fallbackTail);
+    if(opts.noNewTask) cleaned = dropNewProblems(cleaned);
+    cleaned = cleaned.replace(/(예를 들어|예컨대|이렇게)\s*[,:：]?\s*[.:：]\s*/g, '').replace(/\s+([.,!?])/g,'$1').trim();
+    let outText = scrubOutput(capLength(cleaned, opts.maxLen || 420));
+    if(opts.suffix){ outText = outText.replace(/[^.!?요다\n]*\?\s*$/,'').trim(); outText = (outText ? outText + ' ' : '') + opts.suffix; } // 고정 질문은 코드가 붙인다
+    pushAi(outText, passKind, kind==='struct-offer' ? structOffer : null);
     // (개선) 원리10-3 "산출 과정": 이 응답을 만들 때 시스템이 준 실제 지시를 응답에 붙여 둔다.
     { const lt = [...session.turns].reverse().find(x=>x.role==='ai'); if(lt && !lt.instr) lt.instr = String(instruction).slice(0,700); }
     maybeInsertCheckpoint(kind);
@@ -3594,6 +3618,10 @@ function stripMarkdown(s){
     .replace(/^\s{0,3}[-*+]\s+/gm, '· ')
     .replace(/^\s{0,3}\d+\.\s+/gm, m => m)
     .replace(/`([^`]+)`/g, '$1')
+    // (개선) "(※ …)" 꼴의 덧붙임 메모 줄(실제 Solar 응답에서 자주 관찰)을 없앤다
+    .replace(/^\s*\(※[^\n]*\)\s*$/gm, '')
+    .replace(/\(※[^)]{0,200}\)/g, '')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 // 방어적 후처리 2: 시스템 프롬프트의 내부 설정값(지원강도·개입강도 등)이 프롬프트 규칙을 뚫고
@@ -3647,14 +3675,16 @@ function stripMetaLeak(s){
 function hasTableDump(s){
   const t = String(s);
   if((t.match(/^\s*\|.*\|\s*$/gm)||[]).length >= 2) return true;
-  if(/\|\s*-{2,}\s*\|/.test(t)) return true;
+  if(/\|\s*-{2,}\s*\|/.test(t) || /-{3,}\s*\|\s*-{3,}/.test(t)) return true;
+  // (개선) 실제 Solar 응답에서 앞뒤 파이프 없이 "a | b | c" 꼴로 표를 그려 주는 경우가 확인됨
+  if(t.split('\n').filter(l=>(l.match(/\|/g)||[]).length>=2).length >= 2) return true;
   return false;
 }
 function stripTaskDump(s, fallbackTail){
   fallbackTail = fallbackTail || '너는 어떻게 생각해?';
   s = String(s);
   const markers = [...s.matchAll(/(^|\n)\s*[1-9]\d?\.\s+/g)];
-  const tableMarkers = [...s.matchAll(/(^|\n)\s*\|.*\|\s*(\n|$)/gm)];
+  const tableMarkers = [...s.matchAll(/(^|\n)[^\n]*\|[^\n]*\|[^\n]*(?=\n|$)/gm)];
   if(markers.length < 2 && tableMarkers.length < 2) return s;
   if(tableMarkers.length >= 2 && (markers.length < 2 || tableMarkers[0].index < markers[0].index)){
     markers.length = 0; markers.push(tableMarkers[0]);
@@ -3671,6 +3701,16 @@ function stripTaskDump(s, fallbackTail){
 }
 // 방어적 후처리 4: 그래도 남은 응답이 너무 길면(여러 문단짜리 설명) 문장 경계에서 잘라
 // 짧은 대화 형태로 되돌린다.
+// (개선) 실제 Solar 테스트: "새 문제 금지" 지시에도 피드백 턴 끝에 "다른 문제도 풀어보자. 1/2+1/4은?"를
+// 덧붙이는 일이 반복됐다(과업 명세·진단과 학습자 답이 어긋나는 원인). 과업을 내는 턴이 아니면 그런 문장을 걷어낸다.
+const NEW_PROBLEM_RE = /((다른|다음|새로운|추가|연습)\s*문제)|(풀어\s*(보자|볼까|봐|볼래))|(도전해\s*(볼래|보자|봐))|((\d+\s*\/\s*\d+|\d+)\s*[+\-−×÷]\s*(\d+\s*\/\s*\d+|\d+)[^.!?\n]{0,30}(어떻게|몇|구해|계산|될까|일까))/;
+function dropNewProblems(t){
+  t = String(t).replace(/\((힌트|참고|예시)\s*[:：][^)]{0,200}\)/g, '').trim();
+  const parts = t.split(/(?<=[.!?])\s+|\n+/).map(x=>x.trim()).filter(Boolean);
+  if(parts.length < 2) return t;
+  const kept = parts.filter((x,i)=> i===0 || !NEW_PROBLEM_RE.test(x));
+  return kept.join(' ').trim();
+}
 function capLength(s, max=420){
   s = String(s);
   if(s.length<=max) return s;
@@ -3729,7 +3769,7 @@ function sendChat(){
       if(!session.meta.step){
         session.meta.usualMethod = v.slice(0,200);
         session.meta.step = 1;
-        ai(`학습자가 평소 공부법을 "${session.meta.usualMethod}"라고 답했다. 판단하지 말고 짧게 반응한 뒤, 이제 조금 더 구체적으로 스스로 점검해보자고 안내하고 이어서 다음을 물어봐. ${SCAFFOLD_ORDER[0].instr}`);
+        ai(`학습자가 평소 공부법을 "${session.meta.usualMethod}"라고 답했다. 판단하지 말고 학습자의 방금 말에 한 문장으로만 짧게 반응하라. 질문하지 말고, 설명·풀이·예시 문제·연습 과업도 하지 마라(지금은 스스로 점검하는 단계다).`, null, null, { maxLen:160, noNewTask:true, suffix:'이제 조금 더 구체적으로 스스로 점검해 보자. '+SCAFFOLD_ORDER[0].q });
         return;
       }
       session.meta.raw = (session.meta.raw ? session.meta.raw+' / ' : '') + v;
@@ -3740,7 +3780,7 @@ function sendChat(){
       session.meta.answers[aKey] = session.meta.answers[aKey] ? session.meta.answers[aKey] + ' / ' + v : v;
       if(n < SCAFFOLD_ORDER.length){
         session.meta.step = n + 1;
-        ai(SCAFFOLD_ORDER[n].instr); // n=1→전략 스캐폴딩, n=2→연결 스캐폴딩
+        ai(`학습자의 방금 말에 한 문장으로만 짧게 반응하라. 질문하지 말고, 설명·풀이·예시 문제·연습 과업도 하지 마라(지금은 스스로 점검하는 단계다).`, null, null, { maxLen:160, noNewTask:true, suffix:SCAFFOLD_ORDER[n].q }); // n=1→전략, n=2→연결 (질문은 코드가 고정 문구로 붙임)
       } else {
         ai(`학습자의 답에 짧게 공감하고, "이해질문·전략질문·연결질문을 다 나눠봤어. 이 정도면 준비된 것 같아, 더 이야기해도 좋고 준비됐으면 아래 [다음으로]를 눌러도 좋아"라고 안내해. 절대 공부 방법 고르기로 먼저 넘어가지 마.`);
         // 버그 수정: meta.step이 방금 SCAFFOLD_ORDER.length에 닿아 [다음으로] 버튼이 나타날
@@ -3789,7 +3829,7 @@ function sendChat(){
   // ("이게 무슨 뜻이야?")을 해도 곧바로 점검(check) 단계로 넘어가 버렸다. 과업 시도를 기다리는
   // 중(kindNow==='check')에 들어온 도움 요청은 순환을 넘기지 않고 비계(힌트)로만 응답한다(원리9-2).
   if(kindNow==='check' && session.currentTask && isHelpRequest(v)){
-    ai(`학습자가 과업("${session.currentTask.task}")을 하다가 질문·도움 요청을 했다. 과업을 대신 해주지 말고, 지금 도움 정도에 맞는 단서 1개만 주거나 질문 뜻을 쉬운 말로 풀어준 뒤, 다시 과업을 시도해 보라고 짧게 권해라.`);
+    ai(`학습자가 과업("${session.currentTask.task}")을 하다가 질문·도움 요청을 했다. 과업을 대신 해주지 말고, 지금 도움 정도에 맞는 단서 1개만 주거나 질문 뜻을 쉬운 말로 풀어준 뒤, 다시 과업을 시도해 보라고 짧게 권해라.`, null, null, { noNewTask:true });
     return;
   }
   session.cycleIdx = ((session.cycleIdx||0) + 1) % 4;
@@ -3800,10 +3840,11 @@ function sendChat(){
     session.stratRounds = session.stratRounds || {};
     session.stratRounds[strat.id] = (session.stratRounds[strat.id]||0) + 1;
   }
-  let instr;
+  let instr, askNoTask = false;
   if(kindNow==='ask'){
+    askNoTask = true;
     // (개선) ask도 지금 방법과 이어지게 한다(예전엔 방법과 무관한 일반 발문이었다).
-    instr = `학습자의 생각에 반응하고, 곧 "${strat?strat.label:'고른 방법'}"으로 해볼 과업의 재료가 될 내용(${session.currentTask&&session.currentTask.target?session.currentTask.target:'오늘 배우는 핵심'})을 떠올리게 하는 발문 1개를 던진다.`;
+    instr = `(새 문제·과업은 내지 마라) 학습자의 생각에 반응하고, 곧 "${strat?strat.label:'고른 방법'}"으로 해볼 과업의 재료가 될 내용(${session.currentTask&&session.currentTask.target?session.currentTask.target:'오늘 배우는 핵심'})을 떠올리게 하는 발문 1개를 던진다.`;
   } else if(kindNow==='apply'){
     // (개선) 예전 지시는 모든 전략에 "표면 소재를 바꾼 새 상황에 적용(전이)"을 강제하고, 팁을 무작위로
     // 하나 골라 붙였다 → 인출연습·조직화와 충돌하고 내용과 안 맞는 팁이 붙는 원인. 이제 전략별 과업
@@ -3856,9 +3897,10 @@ function sendChat(){
       issueTask(nextStrat, `학습자가 "${strat.label}" 방법으로 과업을 ${lastLevel===2?'잘 해냈다':'어느 정도 해 봤다'}. 그 점을 구체적으로 짧게 짚어주고, "이제 다음 방법인 ${nextStrat?nextStrat.label:''}으로 넘어가 보자"라고 알려준 뒤, 바로 새 과업을 낸다.`);
       return;
     }
-    instr = `방금까지의 시행·점검 결과를 짧게 되짚어주고, "지금 이 방법(${strat?strat.label:'선택한 방법'})이 잘 맞는 것 같아? 계속 써볼까, 다른 방법으로 바꿔볼까?" 같은 취지로 1개만 물어봐. 계속할지 바꿀지는 학습자가 정하고, 바꾸고 싶다고 하면 위쪽 [🔄 방법 바꾸기]에서 직접 고르면 된다고 짧게 안내해. 절대 네가 대신 정하지 마.`;
+    askNoTask = true;
+    instr = `(새 문제·과업은 내지 마라) 방금까지의 시행·점검 결과를 짧게 되짚어주고, "지금 이 방법(${strat?strat.label:'선택한 방법'})이 잘 맞는 것 같아? 계속 써볼까, 다른 방법으로 바꿔볼까?" 같은 취지로 1개만 물어봐. 계속할지 바꿀지는 학습자가 정하고, 바꾸고 싶다고 하면 위쪽 [🔄 방법 바꾸기]에서 직접 고르면 된다고 짧게 안내해. 절대 네가 대신 정하지 마.`;
   }
-  ai(instr);
+  ai(instr, null, null, { noNewTask: askNoTask });
 }
 
 // (개선) 원리9 check 단계: 과업 명세에 비춘 진단 → 근거 있는 피드백 → 수용·전략 효과는 학습자 판단.
@@ -3878,7 +3920,7 @@ async function checkWithEvaluation(spec, chatText, extraInstr){
     await ai(`학습자가 방금 한 시도를 스스로 점검하도록, 아직 헷갈리는 부분이나 방금 쓴 방법이 도움이 됐는지 묻는 질문 1개를 던진다.${extraInstr||''}`);
     return ev;
   }
-  await ai(evalFeedbackInstr(spec, ev) + (extraInstr||''), null, null, { maxLen:650 });
+  await ai(evalFeedbackInstr(spec, ev) + (extraInstr||''), null, null, { maxLen:650, noNewTask:true });
   const t = [...session.turns].reverse().find(x=>x.role==='ai' && !x.structured);
   if(t){ t.evalId = ev.id; t.evalTaskId = spec.id; }
   renderStream();
@@ -4257,7 +4299,26 @@ async function callLLM(messages, opts){
   if(!r.ok) throw new Error(d.error?.message || d.error || ('HTTP '+r.status));
   return d.choices[0].message.content;
 }
-function parseJSON(s){ const m = s.match(/\{[\s\S]*\}/); return JSON.parse(m ? m[0] : s); }
+// (개선) 실제 Solar 응답에서 JSON 뒤에 설명이 붙거나 마지막 }가 빠지는 경우가 관찰됨 → 단계적으로 복구한다.
+function balancedSlice(str, open, close, from){
+  const i = str.indexOf(open, from||0); if(i<0) return null;
+  let depth=0, inStr=false, esc=false;
+  for(let k=i;k<str.length;k++){
+    const c=str[k];
+    if(inStr){ if(esc) esc=false; else if(c==='\\') esc=true; else if(c==='"') inStr=false; continue; }
+    if(c==='"') inStr=true; else if(c===open) depth++; else if(c===close){ depth--; if(depth===0) return str.slice(i,k+1); }
+  }
+  return null;
+}
+function parseJSON(s){
+  s = String(s).replace(/```(?:json)?/g,'');
+  const m = s.match(/\{[\s\S]*\}/);
+  try{ return JSON.parse(m ? m[0] : s); }catch(e){}
+  const b = balancedSlice(s,'{','}'); if(b){ try{ return JSON.parse(b); }catch(e){} }
+  const at = s.indexOf('"items"');
+  if(at>=0){ const arr = balancedSlice(s,'[',']',at); if(arr){ try{ return { items: JSON.parse(arr) }; }catch(e){} } }
+  throw new Error('JSON 형식 오류');
+}
 
 /* ============================================================
    wiring
@@ -4371,7 +4432,7 @@ function init(){
         // 먼저 받는다(session.meta.step=0이 "아직 이 질문에 답 안 함"을 뜻함). 답하면 그다음
         // sendChat의 'meta' 처리에서 usualMethod로 저장하고 이해 스캐폴딩(step=1)으로 이어간다.
         session.prepStep='meta'; session.meta.step=0; renderStream(); paintPhase();
-        ai(`자신감 점수 잘 알려줬어. 이제 스스로 점검을 해보자. 먼저 "이 내용, 평소에는 보통 어떻게 공부해?"라고 한 줄로 편하게 물어봐. 질문 1개.`);
+        ai(`학습자가 자신감 점수를 골랐다. "알려줘서 고마워" 정도로 한 문장만 말하라. 질문하지 말고, 설명·힌트·풀이도 하지 마라.`, null, null, { maxLen:120, noNewTask:true, suffix:'이제 스스로 점검을 해 보자. 먼저, 이 내용은 평소에 보통 어떻게 공부해?' });
       } else renderStream();
       return;
     }
