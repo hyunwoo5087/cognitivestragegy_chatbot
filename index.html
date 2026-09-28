@@ -407,6 +407,39 @@
   .gp-empty{padding:18px;text-align:center;color:var(--muted);font-size:13px;border:1px dashed var(--line-strong);border-radius:10px;margin-bottom:12px}
   .gp-sub{font-size:13px;margin:16px 0 6px;color:var(--ink-2)}
   @media(max-width:620px){.stat-row-3{grid-template-columns:repeat(3,1fr)} .stat-row-3 .stat-tile .num{font-size:20px}}
+  /* ===== (개선) 쉬운 화면 ===== */
+  .support-mini{font-size:12px;font-weight:700;color:var(--accent-ink);background:var(--accent-wash);border-radius:999px;padding:3px 10px;margin-left:6px;display:none}
+  .tools-btn{display:none;height:30px;font-size:12px;align-self:flex-start}
+  #tb-details > summary{display:none}
+  .tb-summary{cursor:pointer;font-weight:800;font-size:14px;padding:12px 14px;border:1px dashed var(--line-strong);border-radius:10px;list-style:none}
+  .tb-summary span{font-weight:500;color:var(--muted);font-size:12.5px}
+  body.easy #tb-details > summary{display:block}
+  body.easy #tb-details[open] > summary{margin-bottom:12px}
+  body.easy #process-bar{display:none!important}
+  body.easy [data-screen="chat"] .rail{display:none}
+  body.easy #scaffold-wrap{display:none}
+  body.easy .support-mini{display:inline-block}
+  body.easy #proc-sub-wrap{display:none!important}
+  body.easy .cycle-title{display:none}
+  body.easy .cycle-wrap{padding-top:8px;padding-bottom:8px}
+  body.easy .goal-strip #gs-std, body.easy .goal-strip #gs-extra-row{display:none}
+  body.easy .goal-strip{flex-direction:row;flex-wrap:wrap;gap:4px 14px;padding:8px 18px}
+  body.easy .msg.ai:not(.is-latest) .judge-trigger:not(.st-accept):not(.st-hold):not(.st-comment), body.easy .msg.ai:not(.is-latest) .explain-btn{display:none}
+  body.easy .task-card .tc-sub, body.easy .task-card .tc-row.err{display:none}
+  body.easy .strat-card .sc-tips, body.easy .strat-card .sc-when{display:none}
+  body.easy [data-pick="strategy"] .msc-row{display:none}
+  body.easy .msc-foot{display:none}
+  body.easy #math-symbols{display:none!important}
+  body.easy.tools-open #math-symbols:not([hidden]){display:flex!important}
+  body.easy .tools-btn:not([hidden]){display:inline-flex}
+  body.easy #quick-actions{display:none!important}
+  body.easy .easy-hide{display:none}
+  body.easy .brand small{display:none}
+  body.easy #timeline .tl-ai{display:none}
+  body.easy .paper .tab .tab-long{display:none}
+  body.easy [data-screen="start"] .rail .subhead, body.easy [data-screen="reflect"] .rail .subhead, body.easy [data-screen="residual"] .rail .subhead{display:none}
+  body.easy .compose > .stuck, body.easy .compose > .tools-btn{margin-right:6px}
+  body.easy #delegate-wrap{font-size:11.5px}
   /* (사용성) 못 넘어갈 때 이유 안내 */
   .gate-hint{font-size:12.5px;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:6px 10px;margin-top:8px;cursor:pointer}
   .gate-hint:empty{display:none}
@@ -533,6 +566,7 @@
     </div>
     <div class="top-right">
       <span class="who" id="who" hidden></span>
+      <button class="icon-btn" id="btn-ui-mode" title="화면을 쉽게/자세히 바꿔요">🔎 자세히 보기</button>
       <button class="icon-btn" id="btn-home" hidden>내 공부방</button>
       <button class="icon-btn" id="btn-logout" hidden>나가기</button>
     </div>
@@ -669,7 +703,7 @@
         <div>
           <label class="field-label" for="st-band">학년</label>
           <select class="select" id="st-band"></select>
-          <p class="hint">3·4학년, 5·6학년, 중1~3학년은 학년군으로 묶여 있어서, 같은 묶음이면 배울 내용이 같아요.</p>
+          <p class="hint easy-hide">3·4학년, 5·6학년, 중1~3학년은 학년군으로 묶여 있어서, 같은 묶음이면 배울 내용이 같아요.</p>
         </div>
         <div>
           <label class="field-label" for="st-subject">과목 <span style="color:var(--muted);font-weight:500">(안 골라도 돼요)</span></label>
@@ -715,7 +749,8 @@
            (AI 의존도 연속 조절), 역할고정협업 블록은 토글(AI 호출 여부만 선택)로 구분 제시한다."
            다(가변) 5개는 슬라이더로, 가(역할고정·AI) 3개는 "AI가 바로 나설지" 토글로 바꾼다.
            나(역할고정·학습자)는 AI가 애초에 할 수 없는 일이라 호출할 대상이 없어 토글도 없다. -->
-      <div>
+      <details id="tb-details" open>
+        <summary class="tb-summary">⚙️ AI와 할 일 나누기 <span>(그대로 두면 알맞게 정해져 있어요 — 바꾸고 싶을 때만 열어요)</span></summary>
         <label class="field-label" style="margin-bottom:6px">오늘 할 일, 누가 얼마나 맡을까요?</label>
         <p class="hint" style="margin:0 0 10px">아래 5가지는 <b>AI가 해도 되고 내가 해도 되는 일</b>이에요. 막대를 밀어서 AI와 내가 얼마나씩 맡을지 정해요.</p>
         <p class="hint" id="tb-recent-hint" style="margin:0 0 10px"></p>
@@ -731,7 +766,7 @@
             <p>내가 어떻게 공부하고 있는지 스스로 돌아보고, 내 생각이 맞는지도 내가 직접 판단해요.</p>
           </div>
         </div>
-      </div>
+      </details>
     </div>
     <div class="nav">
       <button class="btn btn-ghost" id="st-back">← 내 공부방</button>
@@ -752,6 +787,7 @@
         <div class="meta">
           <span class="phase-pill" id="phase-pill">먼저 이야기</span>
           <span id="chat-std">오늘 배울 내용</span>
+          <span class="support-mini" id="support-mini" title="AI 도움 크기 — 잘 이해할수록 줄어요"></span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <span class="support-badge" id="strategy-badge" style="background:var(--accent-wash);border-color:#cdeadd;color:var(--accent-ink)" title="내가 고른 공부 방법이에요 — 여러 개 고를 수 있고, 막히면 바꿔볼 수 있어요." hidden>
@@ -761,7 +797,7 @@
         </div>
       </div>
       <div class="goal-strip" id="goal-strip">
-        <div class="gs-row"><span class="gs-ic">🎯</span><b>성취기준</b><span id="gs-std"></span><button type="button" class="icon-btn" id="gs-source" style="height:24px;padding:0 8px;font-size:11px;margin-left:auto" title="AI가 참고하는 교육과정 근거 보기">📚 근거 자료</button></div>
+        <div class="gs-row"><span class="gs-ic">🎯</span><b>오늘 배울 것</b><span id="gs-std"></span><button type="button" class="icon-btn" id="gs-source" style="height:24px;padding:0 8px;font-size:11px;margin-left:auto" title="AI가 참고하는 교육과정 근거 보기">📚 근거 자료</button></div>
         <div class="gs-row" id="gs-extra-row" hidden><span class="gs-ic">🔗</span><b>함께 다루는 것</b><span id="gs-extra"></span></div>
         <div class="gs-row" id="gs-goal-row" hidden><span class="gs-ic">🧭</span><b>오늘 목표</b><span id="gs-goal"></span></div>
       </div>
@@ -792,6 +828,7 @@
         <div class="quick-actions" id="quick-actions" hidden></div>
         <!-- 요청사항: "수식을 제대로 인식 못한다" — 손글씨 인식(Vision)이 분수·지수·근호 같은
              기호를 놓칠 수 있어, 타이핑으로 정확하게 넣을 수 있는 수식 기호 버튼을 보조로 둔다. -->
+        <button type="button" class="icon-btn tools-btn" id="btn-tools">➕ 수식 기호</button>
         <div class="quick-actions" id="math-symbols" hidden>
           <button type="button" class="sym-btn" data-sym="/">／(분수)</button>
           <button type="button" class="sym-btn" data-sym="^">^(지수)</button>
@@ -852,7 +889,7 @@
             </div>
           </div>
           <!-- 요청사항(3번째 피드백) 8: 대화 중 개별로 했던 "판단하기"를 한번에 묶어 다시 볼 수 있게 -->
-          <div class="box">
+          <div class="box easy-hide">
             <h4>👍🤔💭 AI 말 판단 모아보기</h4>
             <div id="judge-collected" class="stack" style="gap:6px"></div>
           </div>
@@ -866,7 +903,7 @@
             <h4>이번 공부에서 만든 자료</h4>
             <div id="artifact-log" class="stack" style="gap:8px"></div>
           </div>
-          <div>
+          <div class="easy-hide">
             <h4 style="font-size:13px;font-weight:800;margin-bottom:10px">내가 "다른 생각"으로 남긴 코멘트</h4>
             <div id="reflect-comments" class="stack" style="gap:8px"></div>
           </div>
@@ -1073,7 +1110,7 @@ const PICS = ['🍎','🍌','🍇','🍓','🍉','🥕','🐶','🐱','🐰','�
 // 알려줬는데, 그마저도 와닿지 않는다는 지적. 전략 5개 각각에 "이럴 때 특히 도움돼요"를
 // 미리 써 두고, 카드마다 보여준다(원리8-②③).
 const STRATS = [
-  { id:'rehearsal',   emoji:'🧠', label:'인출 연습하기', theory:'인출연습(Retrieval Practice)', desc:'안 보고 스스로 떠올려보고, 바로 확인하고 조금 있다가 또 확인해요',
+  { id:'rehearsal',   emoji:'🧠', label:'안 보고 떠올려 보기', theory:'인출연습(Retrieval Practice)', desc:'안 보고 스스로 떠올려보고, 바로 확인하고 조금 있다가 또 확인해요',
     recommendWhen:'한 번 배운 내용이 머릿속에 잘 남아있는지 스스로 확인해보고 싶을 때',
     verb:'방금 나눈 이야기를 안 보고 스스로 떠올려보게 한 뒤, 맞았는지 바로 확인해주고 조금 있다가 다시 물어보도록',
     tips:['채팅을 보지 않고 먼저 답을 떠올려보기','바로 정답과 비교해보기','헷갈렸던 건 나중에 다시 답해보기'],
@@ -1395,14 +1432,14 @@ function evalFeedbackInstr(spec, ev){
 이 진단에 근거해 피드백하라: (1) 학습자가 실제로 쓴 낱말을 그대로 짚으며 잘한 점 1가지, (2) 빠지거나 어긋난 점이 있으면 1가지를 "내가 보기엔 ~ 부분이 ~해서 헷갈린 것 같아"처럼 이유와 함께 알려주되 정답을 통째로 불러주지 말고 고칠 단서만 줘라(착오 유형을 쉬운 말로), ${ev.strategyUsed?'':'(3) 답만 쓰고 '+(strat?strat.label:'고른 방법')+' 방법은 아직 안 썼다는 점도 짚어라, '}마지막으로 "이 진단에 동의해? 그리고 ${strat?strat.label:'이 방법'}이 이번에 도움이 됐어?"처럼 학습자가 스스로 판단하게 1개만 물어라. 새 문제나 다음 과업은 절대 덧붙이지 마라(다음 과업은 시스템이 따로 낸다). 진단을 판결처럼 단정하지 말고, 학습자가 반박할 수 있게 열어 둬라. 5문장 이내.`;
 }
 function taskCardHTML(spec){
-  return `<div class="task-card"><div class="tc-head">🎯 이번 과업에서 이렇게 하면 잘한 거예요</div><ul>${spec.criteria.map(c=>`<li>${esc(c)}</li>`).join('')}</ul></div>`;
+  return `<div class="task-card"><div class="tc-head">🎯 이렇게 하면 성공이에요</div><ul>${spec.criteria.map(c=>`<li>${esc(c)}</li>`).join('')}</ul></div>`;
 }
 function evalCardHTML(ev){
   const lv = ['아직 많이 남았어요','일부 해냈어요','대부분 해냈어요'][ev.level];
-  return `<div class="task-card eval"><div class="tc-head">🔎 AI가 본 근거 — ${lv} <span class="tc-sub">(AI의 진단이에요. 동의하지 않으면 "판단하기"로 알려줘요)</span></div>
-    ${ev.met.length?`<div class="tc-row"><b>해낸 점</b> ${ev.met.map(esc).join(' · ')}</div>`:''}
-    ${ev.missing.length?`<div class="tc-row"><b>더 볼 점</b> ${ev.missing.map(esc).join(' · ')}</div>`:''}
-    ${ev.errorType && ev.errorType!=='특별한 착오 없음'?`<div class="tc-row"><b>헷갈린 종류(추정)</b> ${esc(ev.errorType)}</div>`:''}
+  return `<div class="task-card eval"><div class="tc-head">🔎 AI가 본 내 답 — ${lv} <span class="tc-sub">(AI의 생각이에요. 아니라고 생각하면 "판단하기"로 알려줘요)</span></div>
+    ${ev.met.length?`<div class="tc-row"><b>⭐ 잘한 점</b> ${ev.met.map(esc).join(' · ')}</div>`:''}
+    ${ev.missing.length?`<div class="tc-row"><b>🔧 더 해볼 점</b> ${ev.missing.map(esc).join(' · ')}</div>`:''}
+    ${ev.errorType && ev.errorType!=='특별한 착오 없음'?`<div class="tc-row err"><b>🤔 헷갈린 곳</b> ${esc(ev.errorType)} (AI 짐작)</div>`:''}
   </div>`;
 }
 function isHelpRequest(v){
@@ -1585,6 +1622,26 @@ window.addEventListener('beforeunload', ()=>{
 try{ localStorage.removeItem('mars.db.v3'); }catch(e){}
 
 /* ---------- router ---------- */
+/* ===== (개선) 쉬운 화면 / 자세한 화면 =====
+   초등학생에게 대화 화면 위 안내 막대 6줄, AI 말마다 붙는 버튼·카드, 긴 방법 카드가 너무 많았다.
+   초등 학년은 기본으로 "쉬운 화면"(필요한 것만 보이고 나머지는 눌러서 펼침), 중·고등은 "자세한 화면".
+   원리1(도움 크기)·원리3(시각화)·원리5(과업 분담) 요소는 없애지 않고 한 번 더 눌러 보는 곳으로 옮긴다.
+   오른쪽 위 버튼으로 언제든 바꿀 수 있다(이 브라우저에 기억). */
+function lastGradeKnown(){
+  if(session && session.ctx && session.ctx.grade) return session.ctx.grade;
+  const acc = typeof account==='function' ? account() : null;
+  const last = acc && acc.sessions && acc.sessions.length ? acc.sessions[acc.sessions.length-1] : null;
+  if(last && last.ctx) return last.ctx.grade;
+  const b = document.getElementById('st-band'); return b && b.value ? b.value : '';
+}
+function applyUIMode(){
+  let pref = null; try{ pref = localStorage.getItem('uiMode'); }catch(e){}
+  const g = lastGradeKnown();
+  const easy = pref ? pref==='easy' : (!g || /초등/.test(g));
+  document.body.classList.toggle('easy', easy);
+  const b = document.getElementById('btn-ui-mode'); if(b) b.textContent = easy ? '🔎 자세히 보기' : '🙂 쉽게 보기';
+  const d = document.getElementById('tb-details'); if(d && !d.dataset.touched) d.open = !easy;
+}
 function show(name){
   $$('.screen').forEach(el => el.classList.toggle('is-active', el.dataset.screen === name));
   window.scrollTo({ top:0, behavior:'smooth' });
@@ -1592,6 +1649,7 @@ function show(name){
   $('#who').hidden = !authed; $('#btn-home').hidden = !authed; $('#btn-logout').hidden = !authed;
   if (authed) $('#who').textContent = DB.currentUser + ' 님';
   paintProcessBar();
+  applyUIMode();
   if (name === 'home') renderHome();
   if (name === 'start') renderStart();
   if (name === 'chat') enterChat();
@@ -2327,6 +2385,7 @@ function enterChat(){
   micBtn.hidden = !(SR && session.ctx.subject==='영어');
   $('#btn-handwrite').hidden = session.ctx.subject!=='수학';
   $('#math-symbols').hidden = session.ctx.subject!=='수학';
+  $('#btn-tools').hidden = session.ctx.subject!=='수학';
   if(!session.turns.length){
     pushNote(`공부 시작 · [${session.ctx.grade||session.ctx.band} ${session.ctx.subject}] ${trim(session.ctx.std,44)}`);
     advancePrep();
@@ -2468,6 +2527,9 @@ function renderScaffoldStrip(){
 }
 function paintSupport(){
   renderScaffoldStrip();
+  const sm = $('#support-mini');
+  if(sm && session){ const lv = { high:['🟢🟢🟢','많이'], mid:['🟢🟢⚪','보통'], low:['🟢⚪⚪','조금'] }[session.support] || ['',''];
+    sm.textContent = `AI 도움 ${lv[0]} ${lv[1]}`; }
 }
 function paintPhase(){
   renderGoalStrip();
@@ -2690,7 +2752,7 @@ function renderStream(){
             ${items.map((it,i)=>`<div class="msc-row"><span>${i+1}. ${esc(it.tag)}</span><span class="bar"><i style="width:${it.score||0}%"></i></span><b>${it.score!=null?it.score+'점':'-'}</b></div>`).join('')}
             ${items.map((it,i)=> it.note ? `<div class="msc-note" style="font-size:12px">${i+1}. ${esc(it.note)}</div>` : '').join('')}
             ${session.prior.diagFeedback ? `<div class="msc-note">${esc(session.prior.diagFeedback)}</div>` : ''}
-            <div class="msc-note">이 점수는 나중에 "혼자 풀어보기" 점수와 비교해서 얼마나 늘었는지 보는 데 쓰이고, 잠시 뒤 공부 방법을 고를 때도 참고가 돼요.</div>
+            <div class="msc-note msc-foot">이 점수는 나중에 "혼자 풀어보기" 점수와 비교해서 얼마나 늘었는지 보는 데 쓰이고, 잠시 뒤 공부 방법을 고를 때도 참고가 돼요.</div>
           </div></div>`);
         } else if(!items.length){
           box.insertAdjacentHTML('beforeend', `<div class="msg note"><div class="bubble">문항을 만드는 중…</div></div>`);
@@ -2730,7 +2792,7 @@ function renderStream(){
           ${row('연결 짓기', t.meta.connect)}
           ${t.meta.calib ? `<div class="msc-note"><b>🎯 내 자신감 vs 실제:</b> ${esc(calibSentence(t.meta.calib))}</div>` : ''}
           ${t.meta.feedback ? `<div class="msc-note">${esc(t.meta.feedback)}</div>` : ''}
-          <div class="msc-note">이 점수는 내 학습터에 쌓여서, 어떤 종류의 스스로 점검을 잘하고 어떤 걸 더 연습하면 좋을지 나중에 돌아볼 때 참고가 돼요.</div>
+          <div class="msc-note msc-foot">이 점수는 내 학습터에 쌓여서, 어떤 종류의 스스로 점검을 잘하고 어떤 걸 더 연습하면 좋을지 나중에 돌아볼 때 참고가 돼요.</div>
         </div></div>`);
       } else {
         box.insertAdjacentHTML('beforeend', `<div class="msg note"><div class="bubble">${esc(t.text)}</div></div>`);
@@ -2766,6 +2828,7 @@ function renderStream(){
         ${extra}
       </div></div>`);
   });
+  { const ais = box.querySelectorAll('.msg.ai'); if(ais.length) ais[ais.length-1].classList.add('is-latest'); }
   box.scrollTop = box.scrollHeight;
   if(session.phase==='explore' && session.cycleStarted){ const fb = $('#chat-finish'); if(fb){ const done = (session.strategies||[]).length && session.strategies.every(id=>(session.stratDone||{})[id] || ((session.stratRounds||{})[id]||0) >= 2); fb.textContent = done ? '✅ 고른 방법을 다 해 봤어요! 이야기 끝내기 → 돌아보기' : '이야기 끝내기 → 돌아보기'; fb.classList.toggle('btn-primary', !!done); } }
   saveDraft();
@@ -3690,7 +3753,7 @@ async function ai(instruction, kind, structOffer, opts){
     const strat = currentApplyStrat();
     // (개선) 실제 테스트에서 팁 문구(명사형)를 이어 붙인 "그럼 이번엔 헷갈렸던 건 나중에 다시 답해보기." 같은
     // 어색한 문장이 나왔다. 잘린 뒤에는 지금 과업(있으면)을 가리키는 자연스러운 한 문장만 붙인다.
-    const fallbackTail = session.currentTask ? '그럼 이번 과업을 네가 먼저 해 볼래?' : '지금까지 이야기한 걸 네 말로 한번 정리해 볼래?';
+    const fallbackTail = session.currentTask ? '그럼 이번 할 일을 네가 먼저 해 볼래?' : '지금까지 이야기한 걸 네 말로 한번 정리해 볼래?';
     const passKind = kind==='prior-pick' ? 'prior-pick' : (kind==='strategy-pick' ? 'strategy-pick' : (kind==='struct-offer' ? 'struct-offer' : null));
     let cleaned = stripTaskDump(stripMetaLeak(stripLeakedParams(stripMarkdown(text))), fallbackTail);
     if(opts.noNewTask) cleaned = dropNewProblems(cleaned);
@@ -4083,8 +4146,8 @@ const STRUCT_TYPE_LABEL = { table:'📊 표', mindmap:'🕸️ 마인드맵', co
 // (원리13) — 가·나는 되짚기 화면 안에서, 다는 별도 화면(잔여물 확인)에서 이어지지만 같은
 // 순서 표시 띠를 공유해 "지금 세 단계 중 어디쯤인지"가 화면이 바뀌어도 끊기지 않게 한다.
 const REFLECT_STEPS = [
-  { k:'delegate', t:'가. 역할·위임 성찰' },
-  { k:'prompt',   t:'나. 질문(프롬프트) 성찰' },
+  { k:'delegate', t:'가. 누가 이끌었나 돌아보기' },
+  { k:'prompt',   t:'나. 내 질문 돌아보기' },
   { k:'residual', t:'다. 혼자 풀어보기' }
 ];
 function renderWrapStrip(sel, cur){
@@ -4127,7 +4190,7 @@ function enterReflect(){
   $('#timeline').innerHTML = session.turns.filter(t=>t.role!=='note').map(t=>{
     const mine=t.role==='me';
     const v = mine ? session.reflect.tags[t.id] : null;
-    return `<div class="tl-card">
+    return `<div class="tl-card ${mine?'tl-me':'tl-ai'}">
       <div class="role">${mine?'나':'AI'} · ${PHASES[t.phase]||''}</div>
       <div class="txt">${esc(trim(t.text,120))}</div>
       ${mine?`<div class="tl-tags" data-id="${t.id}">
@@ -4339,7 +4402,7 @@ function renderResidualQuiz(){
     const banner = itemStrat ? `<div class="callout accent" style="margin-bottom:10px">이 문제는 <b>${itemStrat.emoji} ${esc(itemStrat.label)}</b> 방법의 쌍둥이 문제예요 — 그 방법으로 풀어봐요</div>` : '';
     return `
     <div class="paper">
-      <div class="tab">문제 ${i+1} · ${esc(it.tag)} — 공부 전 "아는 것 확인" ${i+1}번과 같은 종류, 소재만 달라요</div>
+      <div class="tab">문제 ${i+1}<span class="tab-long"> · ${esc(it.tag)} — 공부 전 "아는 것 확인" ${i+1}번과 같은 종류, 소재만 달라요</span></div>
       <div class="body stack">
         ${banner}
         <p class="prompt">${esc(it.q)}</p>
@@ -4517,6 +4580,10 @@ function init(){
     if(accD && accD.draft && !window.confirm('하던 공부가 남아 있어요. 새 공부를 시작하면 하던 공부는 지워져요. 그래도 새로 시작할까요?')){ ev.stopImmediatePropagation(); return; }
     if(accD && accD.draft) archiveDraft(); stPicks=[]; $('#st-filter').value=''; $('#st-topic').value=''; $('#st-match-status').hidden=true; show('start'); });
   $('#btn-seed-sample').addEventListener('click', seedSampleSessions);
+  $('#btn-ui-mode').addEventListener('click', ()=>{ const easy = document.body.classList.contains('easy'); try{ localStorage.setItem('uiMode', easy ? 'full' : 'easy'); }catch(e){} applyUIMode(); if(session && currentScreen()==='chat') renderStream(); });
+  $('#btn-tools').addEventListener('click', ()=>{ document.body.classList.toggle('tools-open'); });
+  $('#tb-details').addEventListener('toggle', e=>{ e.target.dataset.touched = '1'; });
+  $('#st-band').addEventListener('change', applyUIMode);
   document.querySelector('.growth-tabs').addEventListener('click', e => { const b = e.target.closest('.gt'); if(b) showGrowthTab(b.dataset.tab); });
   try{ const t = localStorage.getItem('growthTab'); if(t) showGrowthTab(t); }catch(e){}
   $('#btn-clear-sample').addEventListener('click', clearSampleSessions);
