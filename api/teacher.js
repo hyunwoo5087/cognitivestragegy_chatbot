@@ -1,7 +1,7 @@
 // 교사·연구자용 API — 학생 목록, 데이터 내려받기(CSV/JSON), 그림 비밀번호 초기화
 // 인증: Vercel 환경변수 TEACHER_KEY 와 같은 값을 요청 본문 key 로 보내야 한다(POST만 허용, 주소에 키를 남기지 않음).
 import crypto from 'node:crypto';
-import { ready, kvGet, kvSet, kvKeys, kvClear, hashPin } from './_store.js';
+import { ready, kvGet, kvSet, kvKeys, kvClear, hashPin, loadUserData } from './_store.js';
 
 const NICK_RE = /^[\p{L}\p{N} _.\-]{1,16}$/u;
 function keyOk(k) {
@@ -12,12 +12,14 @@ function keyOk(k) {
 }
 async function loadAll() {
   const users = (await kvKeys('user:*')).map(k => k.slice(5)).sort();
-  const out = [];
-  for (const nick of users) {
-    let data = null; try { data = JSON.parse(await kvGet('data:' + nick)); } catch (e) {}
+  // (개선) 학생을 한 명씩 차례로 읽어 학생이 많으면 목록이 느렸다. 10명씩 동시에 읽는다.
+  const one = async nick => {
+    let data = null; try { data = await loadUserData(nick); } catch (e) {}
     let rec = null; try { rec = JSON.parse(await kvGet('user:' + nick)); } catch (e) {}
-    out.push({ nickname: nick, created: rec && rec.created, sessions: (data && data.sessions) || [], draft: (data && data.draft) || null });
-  }
+    return { nickname: nick, created: rec && rec.created, sessions: (data && data.sessions) || [], draft: (data && data.draft) || null };
+  };
+  const out = [];
+  for (let i = 0; i < users.length; i += 10) out.push(...await Promise.all(users.slice(i, i + 10).map(one)));
   return out;
 }
 const avg = a => { const v = a.filter(x => typeof x === 'number'); return v.length ? Math.round(v.reduce((p, c) => p + c, 0) / v.length * 10) / 10 : ''; };

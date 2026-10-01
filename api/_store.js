@@ -258,10 +258,11 @@ export function verifyPin(pin, salt, hash) {
 }
 
 // ---------- 세션 토큰 (상태 없는 HMAC 서명) ----------
+const TOKEN_DAYS_DEFAULT = 90;
 const b64u = (s) => Buffer.from(s).toString('base64url');
 const unb64u = (s) => Buffer.from(s, 'base64url').toString('utf8');
 
-export function makeToken(nickname, days = 90) {
+export function makeToken(nickname, days = TOKEN_DAYS_DEFAULT) {
   const exp = Date.now() + days * 864e5;
   const head = b64u(nickname) + '.' + exp;
   const sig = crypto.createHmac('sha256', SECRET).update(head).digest('base64url');
@@ -278,6 +279,44 @@ export function readToken(tok) {
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
   if (Date.now() > Number(p[1])) return null;
   try { return unb64u(p[0]); } catch (e) { return null; }
+}
+
+// (개선) 진행 중인 공부의 임시 저장본(draft)은 몇 초마다 바뀌므로 학습 기록(data:)과 따로 'draft:' 키에 둔다.
+// 예전엔 임시 저장 때마다 전체 기록(세션이 쌓이면 수 MB)을 읽고 다시 써서 Upstash 무료 한도(월 10GB 전송)를 빨리 썼다.
+export async function loadUserData(nick, fallbackCreated) {
+  let data = null;
+  try { data = JSON.parse(await kvGet('data:' + nick)); } catch (e) { data = null; }
+  if (!data || !Array.isArray(data.sessions)) data = { nickname: nick, created: fallbackCreated || new Date().toISOString(), sessions: [] };
+  let draft = null;
+  try { draft = JSON.parse(await kvGet('draft:' + nick)); } catch (e) { draft = null; }
+  if (!draft) draft = data.draft || null; // 예전 형식(기록 안에 draft)도 읽는다
+  if (draft && draft.session && data.sessions.some(s => s && String(s.id) === String(draft.session.id))) draft = null; // 이미 끝낸 공부
+  data.draft = draft;
+  return data;
+}
+export async function saveDraftKey(nick, draft) {
+  if (draft && typeof draft === 'object') await kvSet('draft:' + nick, JSON.stringify(draft));
+  else await kvDel('draft:' + nick);
+}
+
+// (개선) 선생님이 PIN을 초기화하면 그 전에 받은 로그인(최대 90일)은 더 이상 통하지 않게 한다.
+// 토큰은 상태가 없어서, 사용자 기록의 resetAt보다 먼저 발급된 토큰을 거절하는 방식으로 막는다.
+// (기록을 못 읽는 일시 장애 때는 공부가 끊기지 않도록 통과시킨다.)
+const TOKEN_DAYS = 90;
+export async function readSession(req) {
+  const tok = getCookie(req, 'sess');
+  const nick = readToken(tok);
+  if (!nick) return null;
+  try {
+    const raw = await kvGet('user:' + nick);
+    if (!raw) return null; // 지워진 계정
+    const rec = JSON.parse(raw);
+    if (rec.resetAt) {
+      const issued = Number(String(tok).split('.')[1]) - TOKEN_DAYS * 864e5;
+      if (Date.parse(rec.resetAt) > issued) return null;
+    }
+  } catch (e) { /* 일시 장애는 통과 */ }
+  return nick;
 }
 
 // ---------- 쿠키 ----------

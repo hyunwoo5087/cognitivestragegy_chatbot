@@ -752,7 +752,20 @@
     .support-badge{max-width:62vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block!important}
     .support-badge[hidden]{display:none!important}
     .chat-head{padding:8px 12px}
+    /* (개선) 작은 휴대폰에서 대화창 위 고정 영역이 화면의 30%를 차지했다. 내용은 그대로 두고 여백만 줄인다. */
+    .topbar{padding:6px 2px}
+    .process-bar{padding:5px 10px;margin:0 2px 8px}
+    .chat-head{padding:6px 12px}
+    .goal-strip{padding:6px 12px 7px}
+    .chatwrap{height:calc(100dvh - 92px);min-height:400px}
   }
+  /* (개선) 손가락으로 누르기 작은 버튼·체크칸(9~25px)을 넓힌다. 모양·문구는 그대로이고 누르는 영역만 키운다. */
+  .st-pick-remove{min-width:28px;min-height:28px;display:inline-flex;align-items:center;justify-content:center}
+  #st-confirm,.tb-ai-toggle{width:20px;height:20px;flex:none}
+  .msg-act{padding:7px 10px;min-height:30px}
+  .head-link{min-height:30px;padding-top:4px;padding-bottom:4px}
+  .starters button{min-height:30px}
+  .tools-btn{min-height:30px}
 </style>
 </head>
 <body>
@@ -1038,6 +1051,7 @@
         </div>
         <div class="row">
           <button type="button" class="icon-btn" id="btn-mic" title="말해서 입력하기(영어)" aria-label="영어로 말해서 입력하기" aria-pressed="false" hidden style="width:40px">🎤</button>
+          <button type="button" class="icon-btn" id="btn-mic-lang" title="마이크 언어 바꾸기(지금: 영어)" aria-label="마이크 언어: 영어. 누르면 한국어로 바꿔요" hidden style="width:40px;font-size:13px;font-weight:700">EN</button>
           <button type="button" class="icon-btn" id="btn-handwrite" title="손글씨로 풀기(수학)" hidden style="width:40px">✍️</button>
           <input class="input" id="chat-input" placeholder="편하게 말해도 돼요. 내 생각이나 예상을 먼저 적어 보세요." autocomplete="off" />
           <button class="btn btn-primary" id="chat-send">보내기</button>
@@ -1768,6 +1782,7 @@ function localApi(path, opts){
   if(path==='/api/data'){
     if(!cur) throw new Error('먼저 공부방에 들어와 주세요.');
     if(method==='GET') return { nickname:cur, data: dataOf(cur) || { nickname:cur, created:new Date().toISOString(), sessions:[] } };
+    if(body.draftOnly){ const d = dataOf(cur) || { nickname:cur, created:new Date().toISOString(), sessions:[] }; d.draft = body.draft || null; lsSet('localtest.data.'+cur, JSON.stringify(d)); return { ok:true }; }
     lsSet('localtest.data.'+cur, JSON.stringify({ nickname:cur, created:body.created, sessions:body.sessions, draft: body.draft || null }));
     return { ok:true };
   }
@@ -1798,11 +1813,22 @@ function queueSave(){
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(()=>flushSave(), 600);
 }
+// (개선) 공부하는 동안 몇 초마다 저장하는데, 바뀌는 건 대부분 진행 중인 임시 저장본(draft)뿐이다.
+// 끝낸 공부 기록이 그대로면 draft만 보내서(draftOnly) 전송량을 크게 줄인다.
+let _savedSessSig = null;
+function sessSig(acc){ return JSON.stringify(acc.sessions||[]) + '|' + JSON.stringify(acc.removed||[]); }
+function savePayload(acc){
+  const sig = sessSig(acc);
+  if(sig === _savedSessSig) return { sig, body: JSON.stringify({ draftOnly:true, draft: acc.draft || null }) };
+  return { sig, body: JSON.stringify({ created:acc.created, sessions:acc.sessions, draft: acc.draft || null, removed: acc.removed || [] }) };
+}
 async function flushSave(){
   clearTimeout(_saveTimer); _saveTimer = null;
   const acc = account(); if(!acc) return;
+  const p = savePayload(acc);
   try{
-    await apiJSON('/api/data', { method:'PUT', body: JSON.stringify({ created:acc.created, sessions:acc.sessions, draft: acc.draft || null, removed: acc.removed || [] }) });
+    await apiJSON('/api/data', { method:'PUT', body: p.body });
+    _savedSessSig = p.sig;
   }catch(e){ console.warn('저장 실패:', e.message); }
 }
 /* ===== (사용성) 하던 공부 이어서 하기 =====
@@ -1845,10 +1871,10 @@ function resumeDraft(){
 window.addEventListener('beforeunload', ()=>{
   if(!_saveTimer) return;
   const acc = account(); if(!acc) return;
-  if(LOCAL_MODE){ try{ localApi('/api/data', { method:'PUT', body: JSON.stringify({ created:acc.created, sessions:acc.sessions, draft: acc.draft || null, removed: acc.removed || [] }) }); }catch(e){} return; }
+  const p = savePayload(acc); // 기록이 그대로면 draft만 — 브라우저가 창 닫힐 때 보낼 수 있는 크기(약 64KB) 안에 들기 쉽다
+  if(LOCAL_MODE){ try{ localApi('/api/data', { method:'PUT', body: p.body }); }catch(e){} return; }
   try{
-    navigator.sendBeacon('/api/data', new Blob(
-      [JSON.stringify({ created:acc.created, sessions:acc.sessions, draft: acc.draft || null, removed: acc.removed || [] })], { type:'application/json' }));
+    navigator.sendBeacon('/api/data', new Blob([p.body], { type:'application/json' }));
   }catch(e){}
 });
 // 이전 버전에서 브라우저에 남아있던 로컬 데이터 흔적 정리
@@ -1940,7 +1966,7 @@ async function doAuth(){
     const j = await apiJSON('/api/auth', { method:'POST', body: JSON.stringify({
       mode: authTab==='signup' ? 'signup' : 'login', nickname:nick, pin:code
     }) });
-    DB.accounts = { [j.nickname]: j.data };
+    DB.accounts = { [j.nickname]: j.data }; _savedSessSig = sessSig(j.data);
     DB.currentUser = j.nickname;
     show('home');
   }catch(e){
@@ -2609,6 +2635,7 @@ function enterChat(){
   const micBtn = $('#btn-mic');
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   micBtn.hidden = !(SR && session.ctx.subject==='영어');
+  $('#btn-mic-lang').hidden = micBtn.hidden; paintMicLang();
   $('#btn-handwrite').hidden = session.ctx.subject!=='수학' || ocrAvailable!==true;
   // (개선) 손글씨 인식은 서버에 인식 서비스가 설정돼 있을 때만 보여 준다(없으면 누르자마자 오류 창이 떴다).
   if(session.ctx.subject==='수학' && ocrAvailable===null){ apiJSON('/api/ocr', { method:'POST', body: JSON.stringify({ probe:true }) }).then(r=>{ ocrAvailable = !!(r && r.available); }).catch(()=>{ ocrAvailable = false; }).finally(()=>{ if(session) $('#btn-handwrite').hidden = session.ctx.subject!=='수학' || ocrAvailable!==true; }); }
@@ -2620,6 +2647,21 @@ function enterChat(){
   }
 }
 let micRec = null, micOn = false, micField = null;
+// (개선) 영어 시간에도 내 생각 말하기·돌아보기는 한국어로 하는 경우가 많아, 마이크 언어를 영어/한국어 중에서 고르게 한다.
+let micLang = 'en-US';
+function micLangName(){ return micLang==='ko-KR' ? '한국어' : '영어'; }
+function paintMicLang(){
+  const b = $('#btn-mic-lang'); if(!b) return;
+  b.textContent = micLang==='ko-KR' ? '한' : 'EN';
+  b.title = `마이크 언어 바꾸기(지금: ${micLangName()})`;
+  b.setAttribute('aria-label', `마이크 언어: ${micLangName()}. 누르면 ${micLang==='ko-KR'?'영어':'한국어'}로 바꿔요`);
+  if(!micOn) setMicUi(false);
+}
+function toggleMicLang(){ if(micOn) return; micLang = micLang==='ko-KR' ? 'en-US' : 'ko-KR'; paintMicLang(); }
+// (개선) 크롬·엣지 음성 인식은 말소리를 회사 서버로 보내 글로 바꾼다. 처음 쓸 때 한 번 알려 준다.
+function micNoticeSeen(){ try{ return localStorage.getItem('micNotice')==='1'; }catch(_){ return micNoticeShown; } }
+let micNoticeShown = false;
+function markMicNotice(){ micNoticeShown = true; try{ localStorage.setItem('micNotice','1'); }catch(_){ } }
 // (개선) 마이크로 말한 내용은 "마지막으로 누른 쓰기 칸"에 넣는다. 예전엔 늘 아래 대화 입력칸에만 넣어서,
 // 아는 것 확인·이해도 체크 이유처럼 위쪽 칸에 답할 때는(대화 입력칸이 잠겨 있어) 말한 내용이 사라졌다.
 document.addEventListener('focusin', e=>{
@@ -2635,25 +2677,30 @@ const MIC_ERR = {
   'not-allowed':'마이크를 쓸 수 없어요. 주소창 왼쪽 자물쇠를 눌러 마이크를 "허용"으로 바꾼 뒤 다시 눌러 주세요.',
   'service-not-allowed':'이 브라우저에서는 말해서 입력하기를 쓸 수 없어요. 크롬이나 엣지로 열어 주세요.',
   'audio-capture':'마이크를 찾지 못했어요. 마이크(이어폰)가 연결돼 있는지 확인해 주세요.',
-  'no-speech':'소리가 들리지 않았어요. 버튼을 누르고 또박또박 영어로 말해 보세요.',
+  'no-speech':'소리가 들리지 않았어요. 버튼을 누르고 또박또박 말해 보세요.',
   'network':'인터넷 연결이 불안정해 말을 글로 바꾸지 못했어요. 잠시 뒤 다시 해 보세요.',
-  'language-not-supported':'이 브라우저는 영어 음성 인식을 지원하지 않아요. 크롬이나 엣지로 열어 주세요.'
+  'language-not-supported':'이 브라우저는 이 언어의 음성 인식을 지원하지 않아요. 크롬이나 엣지로 열어 주세요.'
 };
 function setMicUi(on){
   const b = $('#btn-mic'); if(!b) return;
   b.classList.toggle('is-selected', on); b.textContent = on ? '⏹️' : '🎤';
   b.setAttribute('aria-pressed', on ? 'true' : 'false');
-  b.setAttribute('aria-label', on ? '듣는 중 — 누르면 멈춰요' : '영어로 말해서 입력하기');
-  b.title = on ? '듣는 중… 다 말하면 다시 눌러요' : '말해서 입력하기(영어)';
+  b.setAttribute('aria-label', on ? '듣는 중 — 누르면 멈춰요' : `${micLangName()}로 말해서 입력하기`);
+  b.title = on ? '듣는 중… 다 말하면 다시 눌러요' : `말해서 입력하기(${micLangName()})`;
 }
 function toggleMic(){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR) return;
   if(micOn){ micRec && micRec.stop(); return; }
+  if(!micNoticeSeen()){
+    markMicNotice();
+    modal('마이크를 쓰기 전에', '말한 내용은 글로 바꾸기 위해 브라우저 회사(구글·마이크로소프트)의 서버로 보내져요. 이름·학교·전화번호·주소처럼 나를 알아볼 수 있는 말은 하지 마세요. [확인]을 누른 뒤 마이크를 다시 눌러 말하면 돼요.');
+    return;
+  }
   const target = micTarget();
   if(!target){ modal('안내', '먼저 답을 쓸 칸을 한 번 누른 다음 마이크를 눌러 주세요.'); return; }
   micRec = new SR();
-  micRec.lang = 'en-US'; micRec.interimResults = false; micRec.maxAlternatives = 1;
+  micRec.lang = micLang; micRec.interimResults = false; micRec.maxAlternatives = 1;
   micOn = true; setMicUi(true);
   micRec.onresult = (e)=>{
     const said = (e.results[0][0].transcript||'').trim(); if(!said) return;
@@ -5024,6 +5071,7 @@ function init(){
   $('#chat-send').addEventListener('click', sendChat);
   $('#chat-input').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); sendChat(); } });
   $('#btn-mic').addEventListener('click', toggleMic);
+  $('#btn-mic-lang').addEventListener('click', toggleMicLang);
   $('#btn-handwrite').addEventListener('click', openHandwriteModal);
   $('#math-symbols').addEventListener('click', e=>{
     const b = e.target.closest('.sym-btn'); if(!b) return;
@@ -5497,7 +5545,7 @@ function init(){
   (async ()=>{
     try{
       const j = await apiJSON('/api/data', { method:'GET' });
-      DB.accounts = { [j.nickname]: j.data };
+      DB.accounts = { [j.nickname]: j.data }; _savedSessSig = sessSig(j.data);
       DB.currentUser = j.nickname;
       show('home');
     }catch(e){ /* 미로그인: auth 화면 유지 */ }
