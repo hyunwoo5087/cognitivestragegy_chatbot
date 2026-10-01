@@ -1783,7 +1783,9 @@ function localApi(path, opts){
     if(!cur) throw new Error('먼저 공부방에 들어와 주세요.');
     if(method==='GET') return { nickname:cur, data: dataOf(cur) || { nickname:cur, created:new Date().toISOString(), sessions:[] } };
     if(body.draftOnly){ const d = dataOf(cur) || { nickname:cur, created:new Date().toISOString(), sessions:[] }; d.draft = body.draft || null; lsSet('localtest.data.'+cur, JSON.stringify(d)); return { ok:true }; }
-    lsSet('localtest.data.'+cur, JSON.stringify({ nickname:cur, created:body.created, sessions:body.sessions, draft: body.draft || null }));
+    { const prev = dataOf(cur) || { sessions:[] }; const rm = new Set((body.removed||[]).map(String)); const m = new Map((prev.sessions||[]).filter(x=>!rm.has(String(x.id))).map(x=>[String(x.id),x]));
+      (body.sessions||[]).forEach(x=>{ if(!rm.has(String(x.id))) m.set(String(x.id),x); });
+      lsSet('localtest.data.'+cur, JSON.stringify({ nickname:cur, created:prev.created||body.created, sessions:[...m.values()], draft: body.draft || null })); }
     return { ok:true };
   }
   throw new Error('로컬 테스트 모드에서는 쓸 수 없는 기능이에요(' + path + ').');
@@ -1815,12 +1817,17 @@ function queueSave(){
 }
 // (개선) 공부하는 동안 몇 초마다 저장하는데, 바뀌는 건 대부분 진행 중인 임시 저장본(draft)뿐이다.
 // 끝낸 공부 기록이 그대로면 draft만 보내서(draftOnly) 전송량을 크게 줄인다.
-let _savedSessSig = null;
-function sessSig(acc){ return JSON.stringify(acc.sessions||[]) + '|' + JSON.stringify(acc.removed||[]); }
+let _savedSess = new Map(), _savedRemoved = '[]';
+function markSaved(data){ _savedSess = new Map(((data && data.sessions)||[]).map(x=>[String(x.id), JSON.stringify(x)])); _savedRemoved = JSON.stringify((data && data.removed)||[]); }
+// (개선) 끝낸 공부 기록은 바뀐 세션만 보낸다(서버가 기존 기록과 세션 id로 합친다). 기록이 쌓여도 한 번에 보내는 양이 늘지 않는다.
 function savePayload(acc){
-  const sig = sessSig(acc);
-  if(sig === _savedSessSig) return { sig, body: JSON.stringify({ draftOnly:true, draft: acc.draft || null }) };
-  return { sig, body: JSON.stringify({ created:acc.created, sessions:acc.sessions, draft: acc.draft || null, removed: acc.removed || [] }) };
+  const changed = (acc.sessions||[]).map(x=>[String(x.id), JSON.stringify(x), x]).filter(([id,j])=>_savedSess.get(id)!==j);
+  const rem = JSON.stringify(acc.removed||[]);
+  if(!changed.length && rem===_savedRemoved) return { body: JSON.stringify({ draftOnly:true, draft: acc.draft || null }), done(){} };
+  return {
+    body: JSON.stringify({ created:acc.created, sessions:changed.map(c=>c[2]), draft: acc.draft || null, removed: acc.removed || [] }),
+    done(){ changed.forEach(([id,j])=>_savedSess.set(id,j)); _savedRemoved = rem; }
+  };
 }
 async function flushSave(){
   clearTimeout(_saveTimer); _saveTimer = null;
@@ -1828,7 +1835,7 @@ async function flushSave(){
   const p = savePayload(acc);
   try{
     await apiJSON('/api/data', { method:'PUT', body: p.body });
-    _savedSessSig = p.sig;
+    p.done();
   }catch(e){ console.warn('저장 실패:', e.message); }
 }
 /* ===== (사용성) 하던 공부 이어서 하기 =====
@@ -1966,7 +1973,7 @@ async function doAuth(){
     const j = await apiJSON('/api/auth', { method:'POST', body: JSON.stringify({
       mode: authTab==='signup' ? 'signup' : 'login', nickname:nick, pin:code
     }) });
-    DB.accounts = { [j.nickname]: j.data }; _savedSessSig = sessSig(j.data);
+    DB.accounts = { [j.nickname]: j.data }; markSaved(j.data);
     DB.currentUser = j.nickname;
     show('home');
   }catch(e){
@@ -5545,7 +5552,7 @@ function init(){
   (async ()=>{
     try{
       const j = await apiJSON('/api/data', { method:'GET' });
-      DB.accounts = { [j.nickname]: j.data }; _savedSessSig = sessSig(j.data);
+      DB.accounts = { [j.nickname]: j.data }; markSaved(j.data);
       DB.currentUser = j.nickname;
       show('home');
     }catch(e){ /* 미로그인: auth 화면 유지 */ }

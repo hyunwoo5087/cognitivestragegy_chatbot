@@ -82,8 +82,22 @@ $('#btn-list').onclick = async () => {
 async function download(format) {
   msg('#m3', '만드는 중…', true);
   try {
-    const r = await call({ action:'export', format }, true);
-    const blob = await r.blob(); const a = document.createElement('a');
+    let blob;
+    if (format === 'json') {
+      // (개선) 반 전체 대화를 한 번에 받으면 서버 응답 한도를 넘어, 학생 몇 명씩 나눠 받아 하나로 합친다.
+      const students = []; let total = null, exportedAt = null;
+      for (let off = 0; total === null || off < total; off += 4) {
+        const j = await call({ action:'export', format:'json', offset: off, limit: 4 });
+        total = j.total; exportedAt = exportedAt || j.exportedAt; students.push(...j.students);
+        msg('#m3', `만드는 중… (${Math.min(off + 4, total)}/${total}명)`, true);
+        if (!j.students.length) break;
+      }
+      blob = new Blob([JSON.stringify({ exportedAt, students })], { type:'application/json' });
+    } else {
+      const r = await call({ action:'export', format }, true);
+      blob = await r.blob();
+    }
+    const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = `metacog-data-${new Date().toISOString().slice(0,10)}.${format === 'json' ? 'json' : 'csv'}`; a.click();
     msg('#m3', '내려받았어요.', true);
   } catch (e) { msg('#m3', e.message); }

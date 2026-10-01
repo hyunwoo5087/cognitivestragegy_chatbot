@@ -1,7 +1,7 @@
 // 회원가입 / 로그인 / 로그아웃 — 그림 비밀번호 잠금 계정
 import {
   ready, kvGet, kvSet, kvSetNX, kvIncr, kvClear,
-  hashPin, verifyPin, makeToken, setCookie, loadUserData
+  hashPin, verifyPin, makeToken, setCookie, loadUserData, packDoc, sendJSON
 } from './_store.js';
 
 // (개선) 그림 비밀번호는 24개 그림 중 4개 순서라 경우의 수가 약 25만 개뿐이다. 같은 이름으로 10번 연속
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
       const ok = await kvSetNX(uKey, rec); // 원자적: 닉네임이 비어 있을 때만
       if (ok !== 'OK') { res.status(409).json({ error: '이미 있는 이름이에요. [이미 만들었어요]로 들어가거나 다른 이름을 골라 주세요.' }); return; }
       const data = { nickname, created: new Date().toISOString(), sessions: [] };
-      await kvSet(dKey, JSON.stringify(data));
+      await kvSet(dKey, packDoc(data));
       res.setHeader('Set-Cookie', setCookie('sess', makeToken(nickname)));
       res.status(200).json({ nickname, data });
       return;
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
       if (prevFails) await kvClear(failKey);
       const data = await loadUserData(nickname, rec.created);
       res.setHeader('Set-Cookie', setCookie('sess', makeToken(nickname)));
-      res.status(200).json({ nickname, data });
+      sendJSON(req, res, 200, { nickname, data });
       return;
     }
 

@@ -1,7 +1,8 @@
 // 교사·연구자용 API — 학생 목록, 데이터 내려받기(CSV/JSON), 그림 비밀번호 초기화
 // 인증: Vercel 환경변수 TEACHER_KEY 와 같은 값을 요청 본문 key 로 보내야 한다(POST만 허용, 주소에 키를 남기지 않음).
 import crypto from 'node:crypto';
-import { ready, kvGet, kvSet, kvKeys, kvClear, hashPin, loadUserData } from './_store.js';
+import zlib from 'node:zlib';
+import { ready, kvGet, kvSet, kvKeys, kvClear, hashPin, loadUserData, sendJSON } from './_store.js';
 
 const NICK_RE = /^[\p{L}\p{N} _.\-]{1,16}$/u;
 function keyOk(k) {
@@ -10,8 +11,9 @@ function keyOk(k) {
   const a = Buffer.from(k), b = Buffer.from(want);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
-async function loadAll() {
-  const users = (await kvKeys('user:*')).map(k => k.slice(5)).sort();
+async function userList() { return (await kvKeys('user:*')).map(k => k.slice(5)).sort(); }
+async function loadAll(users) {
+  if (!users) users = await userList();
   // (개선) 학생을 한 명씩 차례로 읽어 학생이 많으면 목록이 느렸다. 10명씩 동시에 읽는다.
   const one = async nick => {
     let data = null; try { data = await loadUserData(nick); } catch (e) {}
@@ -62,18 +64,30 @@ export default async function handler(req, res) {
   try {
     if (body.action === 'list') {
       const all = await loadAll();
-      res.status(200).json({ students: all.map(a => ({ nickname: a.nickname, created: a.created, done: a.sessions.filter(s => !s.incomplete).length, incomplete: a.sessions.filter(s => s.incomplete).length + (a.draft ? 1 : 0), last: [...a.sessions.map(s => s.endedAt || s.startedAt), a.draft && a.draft.savedAt].filter(Boolean).sort().pop() || '' })) });
+      sendJSON(req, res, 200, { students: all.map(a => ({ nickname: a.nickname, created: a.created, done: a.sessions.filter(s => !s.incomplete).length, incomplete: a.sessions.filter(s => s.incomplete).length + (a.draft ? 1 : 0), last: [...a.sessions.map(s => s.endedAt || s.startedAt), a.draft && a.draft.savedAt].filter(Boolean).sort().pop() || '' })) });
       return;
     }
     if (body.action === 'export') {
+      // (개선) 전체 대화가 담긴 JSON은 반 전체를 한 번에 보내면 Vercel 응답 한도(4.5MB)를 금방 넘는다
+      // (세션 약 67KB → 반 전체 약 65회). 학생 몇 명씩 나눠 보내고 화면이 하나로 합친다(offset/limit).
+      if (body.format === 'json' && body.limit) {
+        const users = await userList();
+        const off = Math.max(0, Number(body.offset) || 0), lim = Math.min(20, Math.max(1, Number(body.limit) || 5));
+        const part = await loadAll(users.slice(off, off + lim));
+        sendJSON(req, res, 200, { exportedAt: new Date().toISOString(), total: users.length, offset: off, students: part });
+        return;
+      }
       const all = await loadAll();
-      if (body.format === 'json') { res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.status(200).send(JSON.stringify({ exportedAt: new Date().toISOString(), students: all })); return; }
+      if (body.format === 'json') { sendJSON(req, res, 200, { exportedAt: new Date().toISOString(), students: all }); return; }
       const rows = [];
       for (const a of all) {
         for (const s of a.sessions) rows.push(row(a.nickname, s, s.incomplete ? 'incomplete' : 'completed'));
         if (a.draft && a.draft.session) rows.push(row(a.nickname, { ...a.draft.session, stoppedAt: a.draft.screen, endedAt: a.draft.savedAt }, 'in_progress'));
       }
-      res.setHeader('Content-Type', 'text/csv; charset=utf-8'); res.status(200).send(toCSV(rows)); return;
+      const csv = toCSV(rows);
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      if (csv.length > 16384 && /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''))) { res.setHeader('Content-Encoding', 'gzip'); res.setHeader('Vary', 'Accept-Encoding'); res.statusCode = 200; res.end(zlib.gzipSync(Buffer.from(csv))); return; }
+      res.status(200).send(csv); return;
     }
     if (body.action === 'reset') {
       const nick = String(body.nickname || '').trim(), pin = String(body.pin || '');

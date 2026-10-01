@@ -17,6 +17,7 @@
 // 성취기준(curriculum_standards.js)은 그대로 앱에 내장한다 — 매번 시트에서 1,491행을 읽어오면
 // 느려지고 API 한도에도 더 민감해지는데, 정적 참고자료라 굳이 그럴 이유가 없다.
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 
 export const SECRET = process.env.AUTH_SECRET || '';
 // (v28) 저장소를 둘 중 하나로 쓸 수 있다. Google 시트 설정(3개 변수)이 있으면 시트, 없으면
@@ -191,7 +192,7 @@ async function sheets_kvSet(key, value) {
   }
   if (key.startsWith('data:')) {
     const nick = key.slice(5);
-    const obj = JSON.parse(value); // {nickname, created, sessions}
+    const obj = unpackDoc(value); // {nickname, created, sessions} — 압축(gz:)·일반 JSON 모두
     const idx = await sheetsFetch(range('Sessions!A:D'));
     const rows = idx.values || [];
     const bySession = new Map(); // "id" -> { rowNum, json }
@@ -283,19 +284,43 @@ export function readToken(tok) {
 
 // (개선) 진행 중인 공부의 임시 저장본(draft)은 몇 초마다 바뀌므로 학습 기록(data:)과 따로 'draft:' 키에 둔다.
 // 예전엔 임시 저장 때마다 전체 기록(세션이 쌓이면 수 MB)을 읽고 다시 써서 Upstash 무료 한도(월 10GB 전송)를 빨리 썼다.
+// (개선) 학습 기록은 한국어 대화라 gzip으로 약 4~5배 줄어든다. 'gz:'+base64로 저장해 Upstash 저장 용량(무료 256MB)과
+// 전송량(월 10GB)을 아낀다. 예전 형식(그냥 JSON)도 그대로 읽는다.
+export function packDoc(obj) { return 'gz:' + zlib.gzipSync(Buffer.from(JSON.stringify(obj)), { level: 6 }).toString('base64'); }
+export function unpackDoc(raw) {
+  if (raw == null || raw === '') return null;
+  const s = String(raw);
+  if (s.startsWith('gz:')) return JSON.parse(zlib.gunzipSync(Buffer.from(s.slice(3), 'base64')).toString('utf8'));
+  return JSON.parse(s);
+}
+// (개선) 큰 응답은 gzip으로 보낸다(Vercel 함수 응답 한도 4.5MB를 압축 크기 기준으로 쓰게 됨).
+export function sendJSON(req, res, status, obj) {
+  const body = JSON.stringify(obj);
+  const ae = String((req.headers && req.headers['accept-encoding']) || '');
+  if (body.length > 16384 && /\bgzip\b/.test(ae)) {
+    const gz = zlib.gzipSync(Buffer.from(body), { level: 6 });
+    res.statusCode = status;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Encoding', 'gzip');
+    res.setHeader('Vary', 'Accept-Encoding');
+    res.end(gz);
+    return;
+  }
+  res.status(status).json(obj);
+}
 export async function loadUserData(nick, fallbackCreated) {
   let data = null;
-  try { data = JSON.parse(await kvGet('data:' + nick)); } catch (e) { data = null; }
+  try { data = unpackDoc(await kvGet('data:' + nick)); } catch (e) { data = null; }
   if (!data || !Array.isArray(data.sessions)) data = { nickname: nick, created: fallbackCreated || new Date().toISOString(), sessions: [] };
   let draft = null;
-  try { draft = JSON.parse(await kvGet('draft:' + nick)); } catch (e) { draft = null; }
+  try { draft = unpackDoc(await kvGet('draft:' + nick)); } catch (e) { draft = null; }
   if (!draft) draft = data.draft || null; // 예전 형식(기록 안에 draft)도 읽는다
   if (draft && draft.session && data.sessions.some(s => s && String(s.id) === String(draft.session.id))) draft = null; // 이미 끝낸 공부
   data.draft = draft;
   return data;
 }
 export async function saveDraftKey(nick, draft) {
-  if (draft && typeof draft === 'object') await kvSet('draft:' + nick, JSON.stringify(draft));
+  if (draft && typeof draft === 'object') await kvSet('draft:' + nick, packDoc(draft));
   else await kvDel('draft:' + nick);
 }
 
