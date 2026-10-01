@@ -597,6 +597,7 @@
   .done-card > summary:hover{background:var(--surface-2);color:var(--ink-2)}
   .done-card[open] > .meta-score-card{margin-top:6px}
   .msc-row b{width:auto;min-width:34px;white-space:nowrap}
+  #gp-meta-last .msc-row > span:first-child{flex:0 0 52%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .lv-sum{background:var(--surface-2);border-radius:14px;padding:12px 14px}
   .lv-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
   .lv-chip{font-size:12px;color:var(--ink-2);background:#fff;border-radius:999px;padding:2px 10px}
@@ -871,6 +872,7 @@
       <div class="gp" data-panel="meta" hidden>
         <p class="gp-read">읽는 법: 공부를 시작할 때 "스스로 점검" 질문에 답한 내용을 세 가지로 본 점수예요. 헷갈리는 곳을 잘 짚었는지(이해), 공부 방법과 이유를 말했는지(전략), 다른 것과 연결했는지(연결).</p>
         <p class="gp-sum" id="gs-sum-meta"></p>
+        <div id="gp-meta-last" class="stack" style="gap:4px;margin-bottom:10px" hidden></div>
         <div class="gp-empty" id="gp-empty-meta" hidden>공부를 2번 이상 끝내면 흐름 그래프가 생겨요.</div>
         <canvas id="agg-meta-chart" height="140"></canvas>
       </div>
@@ -1701,6 +1703,10 @@ const PII_RULES = [
   { re:/\d{6}-[1-4]\d{6}/g, to:'[주민번호 보호]' },
   { re:/((?:내|제|나의|저의)\s*이름은\s*)[가-힣]{2,4}/g, to:'$1[이름 보호]' },
   { re:/[가-힣]{2,12}(?:초등학교|중학교|고등학교)/g, to:'[학교 보호]' },
+  // (개선) 가상 학생 테스트에서 "별하초 짱"처럼 줄여 쓴 학교 이름이 그대로 저장됐다. 오탐을 줄이려고
+  // 학교를 가리키는 말이 바로 뒤따를 때와 "학교 이름: ○○" 형태만 가린다.
+  { re:/((?:학교|학교\s*이름)\s*(?:은|는|:)\s*)[가-힣A-Za-z0-9]{1,15}/g, to:'$1[학교 보호]' },
+  { re:/[가-힣]{2,6}(?:초|중|고|여중|여고)(?=\s*(?:다녀|에\s*다녀|학생|짱|최고|[1-6]\s*학년))/g, to:'[학교 보호]' },
   { re:/[가-힣]{1,10}(?:시|도)\s+[가-힣]{1,10}(?:구|군|시)\s+[가-힣0-9]{1,12}(?:동|읍|면|로|길)(?:\s*\d+(?:-\d+)?)?/g, to:'[주소 보호]' },
   { re:/(?<!\d)\d{10,16}(?!\d)/g, to:'[숫자 보호]' }
 ];
@@ -2086,7 +2092,7 @@ function renderHome(){
   const metaScored = S.filter(s=>s.meta && s.meta.scoreDetail);
   if(metaScored.length){
     metaCanvas.hidden = false;
-    const META_DIMS = [ {k:'understand', label:'이해(헷갈리는 곳 짚기)', color:'#f59e0b'}, {k:'strategy', label:'전략(방법과 이유)', color:'#8b5cf6'}, {k:'connect', label:'연결', color:'#0d9488'} ];
+    const META_DIMS = [ {k:'understand', label:'이해 질문', color:'#3182f6'}, {k:'strategy', label:'전략 질문', color:'#f59e0b'}, {k:'connect', label:'연결 질문', color:'#12a05f'} ];
     aggMetaChart = new Chart(metaCanvas, {
       type:'line',
       data:{ labels: metaScored.map((s,i)=>`${i+1}회`), datasets: META_DIMS.map(d=>({
@@ -2243,13 +2249,26 @@ function renderGrowth(S, sc, topStrat){
   const ms = S.filter(s => s.meta && s.meta.scoreDetail);
   if(ms.length){
     const L = ms[ms.length-1].meta.scoreDetail, F = ms[0].meta.scoreDetail;
-    const names = { understand:'이해(헷갈리는 곳 짚기)', strategy:'전략(방법과 이유)', connect:'연결' };
+    const names = { understand:'이해 질문', strategy:'전략 질문', connect:'연결 질문' };
     const best = Object.keys(names).sort((a,b)=>L[b]-L[a])[0];
     $('#gs-sum-meta').textContent = ms.length >= 2
       ? (Object.keys(names).some(k=>L[k]>F[k]) ? `처음보다 ${Object.keys(names).filter(k=>L[k]>F[k]).map(k=>names[k]).join('·')} 점수가 올랐어요.` : '처음과 비슷한 수준을 유지하고 있어요. 헷갈리는 곳을 구체적으로 짚어 보면 더 좋아져요.')
-      : `지난번엔 ${names[best]}을(를) 가장 잘했어요.`;
+      : `지난번엔 ${names[best]}에 가장 잘 답했어요.`;
   } else $('#gs-sum-meta').textContent = '';
-  $('#gp-empty-meta').hidden = !(ms.length === 1);
+  // (개선) 끝낸 공부가 1번뿐일 때도 세 질문 점수를 막대로 보여 주고(예전엔 문장 한 줄뿐이었다),
+  // 아직 없을 때는 빈 화면 대신 안내를 보여 준다. 2번 이상이면 질문 유형별 꺾은선이 함께 나온다.
+  const lastBox = $('#gp-meta-last');
+  if(lastBox){
+    if(ms.length){
+      const L = ms[ms.length-1].meta.scoreDetail;
+      const rows = [['이해 질문','헷갈리는 곳을 이유와 함께 짚었나', L.understand],['전략 질문','이 내용에 맞는 방법과 이유를 말했나', L.strategy],['연결 질문','배운 것·생활과 개념에 맞게 연결했나', L.connect]];
+      lastBox.innerHTML = `<div class="gp-sub">가장 최근 공부(${ms.length}번째)</div>` + rows.map(r=>`<div class="msc-row" title="${esc(r[1])}"><span>${r[0]} <small style="color:var(--muted)">${esc(r[1])}</small></span><span class="bar"><i style="width:${r[2]}%"></i></span><b>${r[2]}점</b></div>`).join('');
+      lastBox.hidden = false;
+    } else { lastBox.innerHTML = ''; lastBox.hidden = true; }
+  }
+  const em = $('#gp-empty-meta');
+  em.hidden = ms.length >= 2;
+  em.textContent = ms.length ? '공부를 2번 이상 끝내면 질문 유형별 흐름 그래프가 생겨요.' : '아직 기록이 없어요. 공부를 시작할 때 "스스로 점검" 질문에 답하고 공부를 끝내면 여기에 쌓여요.';
   $('#agg-meta-chart').style.display = ms.length < 2 ? 'none' : '';
 }
 function showGrowthTab(tab){
@@ -3804,25 +3823,44 @@ async function gradeMeta(){
   // "자기 이해 상태를 얼마나 정확히 아는가"는 LLM이 판정할 수 없으므로, 따로 보정도(calibration:
   // 사전 자신감 vs 실제 사전 확인 점수)로 계산해 함께 보여준다(computeCalibration).
   const A = session.meta.answers || {};
-  try{
-    const raw = await callLLM([
-      { role:'system', content:'너는 메타인지 지식 평가 보조자다. 반드시 순수 JSON만 출력한다. 주어진 기준점에만 근거한다.' },
-      { role:'user', content:`성취기준: "${session.ctx.std}"\n교육과정 해설: ${session.ctx.concept||'-'}\n
+  // (개선) 실제 모델 8세션 점검: 딴짓형("그냥 답 알려줘")과 잘 아는 학생이 똑같이 50/50/50을 받는 등
+  // 변별이 약했다. 기준점마다 판정 예시를 붙이고, 수준을 정하기 전에 학습자 말을 근거로 인용하게 한다.
+  // 채점이 실패하면 한 번 더 시도하고, 그래도 안 되면 비워 둔다(내 공부방 그래프에서 빠짐).
+  const prompt = `성취기준: "${session.ctx.std}"\n교육과정 해설: ${session.ctx.concept||'-'}\n
 [이해 점검 답] "${A.understand||session.meta.raw||''}"
- 기준: 0=헷갈리는 부분을 짚지 못함("다 알아/다 몰라" 수준), 1=헷갈리는 부분을 대략 지목했지만 이유가 없음, 2=구체적인 지점과 왜 헷갈리는지 이유를 댐
+ 0 = 헷갈리는 곳을 짚지 못함. 예) "몰라", "다 알아", "그냥 답 알려줘", 공부와 무관한 말
+ 1 = 헷갈리는 곳을 대략 말했지만 왜 헷갈리는지 이유가 없음. 예) "분모가 헷갈려"
+ 2 = 헷갈리는 구체적인 지점과 그 이유를 함께 말함. 예) "최소공배수랑 최대공약수 중 뭘 써야 하는지 헷갈려, 둘 다 나눗셈이 나와서"
 [전략 답 + 평소 공부법] 평소 공부법: "${session.meta.usualMethod||''}" / 전략 질문 답: "${A.strategy||''}"
- 기준: 0=방법을 말하지 못하거나 내용과 무관, 1=일반적인 방법(여러 번 읽기·열심히 등)만 말함, 2=이 내용의 성격에 맞는 구체적인 방법과 그 이유를 말함
+ 0 = 방법을 말하지 못함, 답을 달라고만 함, 문제를 풀어 보이기만 하고 방법은 말하지 않음
+ 1 = 일반적인 방법만 말함. 예) "여러 번 읽기", "문제 많이 풀기", "열심히 하기"
+ 2 = 이 내용에 맞는 구체적인 순서·방법과 그렇게 하는 이유를 말함
 [연결 답] "${A.connect||''}"
- 기준: 0=연결이 없거나 개념적으로 틀림, 1=피상적인 연결(낱말만 비슷함), 2=개념적으로 타당한 공통점·차이점이나 구체적인 사례로 연결
-각 축의 수준(0/1/2)과 학습자에게 줄 격려 위주 한 줄 총평을 써라.
-{"understand":1,"strategy":1,"connect":1,"note":"..."}` }
-    ], { temperature:0 });
-    const j = parseJSON(raw);
-    const lv = v => { const n = Math.round(+v); return Number.isFinite(n) ? Math.max(0,Math.min(2,n))*50 : 0; };
-    session.meta.scoreDetail = { understand:lv(j.understand), strategy:lv(j.strategy), connect:lv(j.connect) };
-    session.meta.score = Math.round((session.meta.scoreDetail.understand+session.meta.scoreDetail.strategy+session.meta.scoreDetail.connect)/3);
-    session.meta.feedback = String(j.note||'');
-  }catch(e){ session.meta.score=null; session.meta.scoreDetail=null; session.meta.feedback=''; }
+ 0 = 연결이 없거나 개념적으로 틀림, 공부와 무관한 말
+ 1 = 낱말이나 겉모습만 비슷한 연결. 예) "피자랑 비슷해"(어떤 점이 같은지 없음)
+ 2 = 어떤 점이 같은지·다른지를 개념에 맞게 설명하거나 구체적인 사례로 연결
+규칙: 먼저 각 축에서 학습자가 실제로 한 말을 20자 이내로 그대로 인용한 뒤(없으면 ""), 그 인용만 근거로 수준을 정해라. 문장이 길거나 공손하다고 점수를 올리지 마라.
+총평(note)은 학습자에게 보여 줄 격려 한 문장이다. 이모지·학교 이름·사람 이름을 쓰지 마라.
+{"understand":{"quote":"...","level":0},"strategy":{"quote":"...","level":0},"connect":{"quote":"...","level":0},"note":"..."}`;
+  const lv = v => { const n = Math.round(+(v && typeof v==='object' ? v.level : v)); return Number.isFinite(n) ? Math.max(0,Math.min(2,n))*50 : null; };
+  let ok = false;
+  for(let attempt=0; attempt<2 && !ok; attempt++){
+    try{
+      const raw = await callLLM([
+        { role:'system', content:'너는 메타인지 지식 평가 보조자다. 반드시 순수 JSON만 출력한다. 주어진 기준점과 학습자 말 인용에만 근거한다.' },
+        { role:'user', content: prompt }
+      ], { temperature:0 });
+      const j = parseJSON(raw);
+      const d = { understand:lv(j.understand), strategy:lv(j.strategy), connect:lv(j.connect) };
+      if([d.understand,d.strategy,d.connect].some(x=>x==null)) throw new Error('shape');
+      session.meta.scoreDetail = d;
+      session.meta.scoreEvidence = { understand:(j.understand||{}).quote||'', strategy:(j.strategy||{}).quote||'', connect:(j.connect||{}).quote||'' };
+      session.meta.score = Math.round((d.understand+d.strategy+d.connect)/3);
+      session.meta.feedback = scrubOutput(String(j.note||'')).trim();
+      ok = true;
+    }catch(e){ /* 한 번 더 시도 */ }
+  }
+  if(!ok){ session.meta.score=null; session.meta.scoreDetail=null; session.meta.feedback=''; }
   session.meta.calib = computeCalibration();
 }
 // 보정도: 사전 자신감(1~5 → 0~100)과 실제 사전 확인 점수의 차이. +면 과대평가, -면 과소평가.
