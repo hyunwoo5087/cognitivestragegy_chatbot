@@ -1289,7 +1289,9 @@ if (location.hostname.endsWith('github.io')) {
    FIXED_API_KEY 를 채우면 서버 프록시 없이 브라우저에서 바로 호출합니다.
    비워두면  (1) localStorage 'UPSTAGE_API_KEY'  (2) 서버 프록시 /api/chat  순으로 사용합니다. */
 const FIXED_API_KEY = "";
-const MODEL = "solar-pro";
+// Upstage가 solar-pro2·solar-pro3·solar-mini를 2026-10-30(KST)에 종료한다고 공지했다. 별칭 "solar-pro"는
+// 지금 solar-pro2를 가리키므로, 후속 모델 solar-pro4를 직접 지정한다.
+const MODEL = "solar-pro4";
 
 const PICS = ['🍎','🍌','🍇','🍓','🍉','🥕','🐶','🐱','🐰','🦁','🐼','🐢','🚀','🚗','⚽','🎈','📚','🎸','🌈','⭐','🍕','🎨','🔑','🧭'];
 /* 공부 방법(인지 전략)은 Weinstein & Mayer(1983)·Pintrich et al.(1993)이 제시한 5대 유형
@@ -3076,6 +3078,7 @@ function renderStream(){
     kids.forEach((el, idx) => {
       if(idx >= tail || !el.classList.contains('note')) return;
       const card = el.querySelector(':scope > .meta-score-card:not(.checkpoint-card)'); if(!card) return;
+      if(card.querySelector('button, textarea, input, select')) return; // 아직 답할 게 남은 카드(도움 줄이기 제안 등)는 접지 않는다
       const title = ((card.querySelector('.msc-title')||{}).textContent || '지난 기록').trim();
       const score = card.querySelector('.msc-row b'); const sum = title + (score && /체크포인트/.test(title) ? ' · ' + score.textContent : '');
       const d = document.createElement('details'); d.className = 'done-card';
@@ -3354,7 +3357,9 @@ function describeStruct(s){
     const items = p.items||[];
     const know = items.filter((_,i)=>(st[i]||{}).selfRate==='know').map(it=>it.q);
     const unsure = items.filter((_,i)=>(st[i]||{}).selfRate==='unsure').map(it=>it.q);
-    return { label:'인출 연습', text:`"맞았어요"로 표시: ${know.join(', ')||'없음'}. "헷갈렸어요"로 표시: ${unsure.join(', ')||'없음'}.` };
+    // (개선) 예전엔 맞았어요/헷갈렸어요 표시만 넘겨서, AI 진단이 학생이 실제로 떠올려 쓴 답을 보지 못했다(가상 학생 진단이 0으로 몰린 원인).
+    const written = items.map((it,i)=>{ const a2 = String((st[i]||{}).attempt||'').trim(); return a2 ? `Q${i+1} "${it.q}" → 내가 쓴 답: ${a2}` : ''; }).filter(Boolean);
+    return { label:'인출 연습', text:`${written.length ? '떠올려 쓴 답: ' + written.join(' / ') + '. ' : '(직접 쓴 답 없음) '}"맞았어요"로 표시: ${know.join(', ')||'없음'}. "헷갈렸어요"로 표시: ${unsure.join(', ')||'없음'}.` };
   }
   // 요청사항(5번째 피드백) 6·7: table·compare·chain도 이제 학습자가 직접 채우는 위젯이라,
   // AI 피드백(reviewStruct)이 실제로 학습자가 입력한 내용을 보고 말할 수 있어야 한다.
@@ -3626,13 +3631,14 @@ async function requestStructured(type, label){
   try{
     const schema = STRUCT_SCHEMAS[type];
     const hist = chatHistory(null, 10);
-    const raw = await callLLM([
+    const msgs = [
       { role:'system', content: sysPrompt(`[출력 형식] 설명 문장이나 마크다운 없이, 반드시 아래 모양의 순수 JSON 하나만 출력해라(다른 텍스트 금지): ${schema.shape}`) },
       ...hist,
       // (개선) 활동판 재료를 성취기준 전문이 아니라 "지금 과업"에 맞춘다(과업-산출물 정합성).
       { role:'user', content: schema.ask(session) + (session.currentTask ? ` 반드시 지금 과업("${session.currentTask.task}")과 그 핵심 내용(${session.currentTask.target||'-'})에 맞는 재료만 뽑아라. 교육과정 해설 범위(${trim(session.ctx.concept||'-',160)})를 벗어나지 마라.` : '') }
-    ]);
-    let payload = parseJSON(raw);
+    ];
+    let payload = null;
+    for(let attempt=0; attempt<2 && !payload; attempt++){ try{ payload = parseJSON(await callLLM(msgs, { json:true })); }catch(e){ if(attempt) throw e; } }
     // 마인드맵: AI가 준 것은 "중심 낱말 + 후보 낱말"뿐이다. 배치·관계·순서는 여기서부터
     // 전부 학습자 몫이라, 관계를 암시하지 않는 무작위 배치로 변환해 저장한다(원리2·8).
     if(type==='mindmap') payload = mmInitPayload(String(payload.root||'중심 낱말'), Array.isArray(payload.children)?payload.children.map(String):[]);
@@ -3641,7 +3647,7 @@ async function requestStructured(type, label){
     renderStream();
   }catch(e){
     $('#pending')?.remove();
-    pushAi('정리하는 데 실패했어요: ' + e.message);
+    pushNote('활동판을 만들지 못했어요. 버튼을 한 번 더 눌러 줄래요?');
   } finally { busy = false; syncComposeLock(); }
 }
 
@@ -3830,7 +3836,7 @@ async function gradeMeta(){
 [이해 점검 답] "${A.understand||session.meta.raw||''}"
  0 = 헷갈리는 곳을 짚지 못함. 예) "몰라", "다 알아", "그냥 답 알려줘", 공부와 무관한 말
  1 = 헷갈리는 곳을 대략 말했지만 왜 헷갈리는지 이유가 없음. 예) "분모가 헷갈려"
- 2 = 헷갈리는 구체적인 지점과 그 이유를 함께 말함. 예) "최소공배수랑 최대공약수 중 뭘 써야 하는지 헷갈려, 둘 다 나눗셈이 나와서"
+ 2 = 헷갈리는 구체적인 지점과 그 이유를 함께 말함("~라서/~때문에/왜냐하면"처럼 이유가 문장에 드러나야 함). 예) "최소공배수랑 최대공약수 중 뭘 써야 하는지 헷갈려, 둘 다 나눗셈이 나와서"
 [전략 답 + 평소 공부법] 평소 공부법: "${session.meta.usualMethod||''}" / 전략 질문 답: "${A.strategy||''}"
  0 = 방법을 말하지 못함, 답을 달라고만 함, 문제를 풀어 보이기만 하고 방법은 말하지 않음
  1 = 일반적인 방법만 말함. 예) "여러 번 읽기", "문제 많이 풀기", "열심히 하기"
@@ -3838,8 +3844,8 @@ async function gradeMeta(){
 [연결 답] "${A.connect||''}"
  0 = 연결이 없거나 개념적으로 틀림, 공부와 무관한 말
  1 = 낱말이나 겉모습만 비슷한 연결. 예) "피자랑 비슷해"(어떤 점이 같은지 없음)
- 2 = 어떤 점이 같은지·다른지를 개념에 맞게 설명하거나 구체적인 사례로 연결
-규칙: 먼저 각 축에서 학습자가 실제로 한 말을 20자 이내로 그대로 인용한 뒤(없으면 ""), 그 인용만 근거로 수준을 정해라. 문장이 길거나 공손하다고 점수를 올리지 마라.
+ 2 = 어떤 점이 같은지·다른지를 개념에 맞게 말로 밝힘(예: "조각 크기를 같게 맞춘다는 점이 통분과 같아"). 사례만 들고 무엇이 같은지 말하지 않으면 1
+규칙: 먼저 각 축에서 학습자가 실제로 한 말을 20자 이내로 그대로 인용한 뒤(없으면 ""), 그 인용만 근거로 수준을 정해라. 판단이 애매하면 낮은 쪽 수준을 골라라. 전략 수준은 "전략 질문 답"으로 정한다 — 평소 공부법은 참고만 하고, 평소 공부법만으로 1보다 높게 줄 수 없다. 답에 "답 알려줘"·"귀찮아"·"몰라"만 있고 방법을 말하지 않으면 0이다. 문장이 길거나 공손하다고 점수를 올리지 마라.
 총평(note)은 학습자에게 보여 줄 격려 한 문장이다. 이모지·학교 이름·사람 이름을 쓰지 마라.
 {"understand":{"quote":"...","level":0},"strategy":{"quote":"...","level":0},"connect":{"quote":"...","level":0},"note":"..."}`;
   const lv = v => { const n = Math.round(+(v && typeof v==='object' ? v.level : v)); return Number.isFinite(n) ? Math.max(0,Math.min(2,n))*50 : null; };
@@ -4142,6 +4148,8 @@ function stripMetaLeak(s){
     .replace(/\([^)]{0,50}(유도|분기|제시|힌트|선택함|택함|답변\s*후|설명\s*후|확인\s*후|응답\s*후|입력\s*후|보여주며|보여주면서|보여주고|보여준\s*후|바탕으로|완성해|완성한|만든\s*것을)[^)]{0,10}\)\s*/g, '')
     .replace(/\([^)]{0,30}학습자[^)]{0,30}\)\s*/g, '')
     .replace(/\([^)]{0,25}카드[^)]{0,20}\)\s*/g, '');
+  // (개선) solar-pro4가 "네가 [이름 보호]라고 말하고 [학교 보호]에 다니는 건…"처럼 가린 표시를 그대로 말했다.
+  out = out.replace(/[^.!?\n]*\[(?:이름|학교|전화번호|이메일|주소|주민번호|숫자) 보호\][^.!?\n]*[.!?]?\s*/g, '');
   const kept = out.split('\n').filter(line=>{
     const t = line.trim();
     if(!t) return true; // 빈 줄은 문단 구분이니 유지
@@ -4844,6 +4852,10 @@ async function callLLM(messages, opts){
   if(key) headers['Authorization'] = 'Bearer '+key;
   const payload = { model:MODEL, messages };
   if(typeof opts.temperature==='number') payload.temperature = opts.temperature;
+  // (개선) solar-pro4는 "순수 JSON만" 지시에도 가끔 "headers: …, bank: …" 같은 글로 답했다(가상 학생 14번 중 3번).
+  // JSON을 요구하는 호출이면 Upstage의 JSON 모드(response_format)를 켠다.
+  const wantsJSON = opts.json || messages.some(m => /순수 JSON|JSON만|JSON 하나만|\[출력 형식\]/.test(String(m.content||'')));
+  if(wantsJSON) payload.response_format = { type:'json_object' };
   // (개선) 가상 학생 테스트(동시 8명)에서 AI 호출이 가끔 502로 실패해 학생 화면에 기술 메시지가 떴다.
   // 일시 오류(네트워크·5xx·429)는 잠깐 기다렸다가 최대 2번 다시 시도하고, 그래도 안 되면 쉬운 말로 알린다.
   let lastErr = null;
@@ -4877,6 +4889,10 @@ function parseJSON(s){
   const b = balancedSlice(s,'{','}'); if(b){ try{ return JSON.parse(b); }catch(e){} }
   const at = s.indexOf('"items"');
   if(at>=0){ const arr = balancedSlice(s,'[',']',at); if(arr){ try{ return { items: JSON.parse(arr) }; }catch(e){} } }
+  // 마지막 보루: "headers: 가, 나, 다" / "bank: [ '…', '…' ]" 처럼 키-목록 줄로 온 경우
+  const kv = {}; String(s).split(/\n+/).forEach(line=>{ const m2 = line.match(/^\s*["']?([a-zA-Z]+)["']?\s*[:：]\s*(.+)$/); if(!m2) return;
+    const v = m2[2].trim().replace(/^\[|\]\.?$/g,''); kv[m2[1]] = v.split(/\s*,\s*/).map(x=>x.replace(/^['"]|['"]\.?$/g,'').trim()).filter(Boolean); });
+  if(Object.keys(kv).length) return kv;
   throw new Error('JSON 형식 오류');
 }
 

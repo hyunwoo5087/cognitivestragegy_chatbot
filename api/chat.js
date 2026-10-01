@@ -8,7 +8,10 @@
 // 이제 로그인 쿠키(sess)가 있는 요청만 통과시키고, 모델·temperature·메시지 크기를 제한한다.
 import { ready, readToken, getCookie } from './_store.js';
 
-const ALLOWED_MODELS = new Set(['solar-pro', 'solar-pro2', 'solar-mini']);
+// Upstage 공지: solar-pro2·solar-pro3·solar-mini는 2026-10-30(KST) 종료 → solar-pro4·solar-mini4로 옮긴다.
+// 예전 화면(캐시된 index.html)이 옛 이름을 보내도 끊기지 않게 새 이름으로 바꿔 보낸다.
+const ALLOWED_MODELS = new Set(['solar-pro4', 'solar-mini4']);
+const LEGACY_MODELS = { 'solar-pro':'solar-pro4', 'solar-pro2':'solar-pro4', 'solar-pro3':'solar-pro4', 'solar-mini':'solar-mini4' };
 const MAX_MESSAGES = 60;
 const MAX_CHARS = 60_000;
 
@@ -29,7 +32,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { model, messages, temperature } = req.body || {};
+  const { model, messages, temperature, response_format } = req.body || {};
   if (!Array.isArray(messages) || messages.length === 0) {
     res.status(400).json({ error: "messages 배열이 필요합니다." });
     return;
@@ -38,9 +41,11 @@ export default async function handler(req, res) {
     res.status(413).json({ error: "요청이 너무 길어요." });
     return;
   }
-  const useModel = ALLOWED_MODELS.has(model) ? model : "solar-pro";
+  const useModel = ALLOWED_MODELS.has(model) ? model : (LEGACY_MODELS[model] || "solar-pro4");
   const body = { model: useModel, messages };
   if (typeof temperature === 'number' && temperature >= 0 && temperature <= 1.5) body.temperature = temperature;
+  // JSON이 필요한 호출(채점·과업 명세·활동판)은 Upstage JSON 모드를 쓴다. 다른 형식은 받지 않는다.
+  if (response_format && response_format.type === 'json_object') body.response_format = { type: 'json_object' };
 
   try {
     const upstream = await fetch("https://api.upstage.ai/v1/chat/completions", {

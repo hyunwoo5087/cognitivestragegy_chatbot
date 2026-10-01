@@ -103,8 +103,8 @@ Sheets 저장과 수학 손글씨 인식은 **같은 Google 서비스 계정 자
 # Upstage 개발자 콘솔 (https://console.upstage.ai/)에서 발급받은 API 키
 UPSTAGE_API_KEY=여기에_발급받으신_키를_붙여넣으세요
 
-# 모델 설정 (기본: solar-pro)
-UPSTAGE_MODEL=solar-pro
+# 모델 설정 (기본: solar-pro4 — solar-pro2·solar-pro3·solar-mini는 2026-10-30 종료)
+UPSTAGE_MODEL=solar-pro4
 UPSTAGE_BASE_URL=https://api.upstage.ai/v1
 UPSTAGE_REASONING_EFFORT=medium
 ```

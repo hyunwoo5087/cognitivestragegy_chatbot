@@ -29,7 +29,7 @@ async function upstage(messages, temperature = 0.7, tries = 3) {
     try {
       const r = await fetch('https://api.upstage.ai/v1/chat/completions', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + KEY },
-        body: JSON.stringify({ model: 'solar-pro', messages, temperature })
+        body: JSON.stringify({ model: process.env.UPSTAGE_MODEL || 'solar-pro4', messages, temperature })
       });
       const d = await r.json();
       if (d.choices) return d.choices[0].message.content;
