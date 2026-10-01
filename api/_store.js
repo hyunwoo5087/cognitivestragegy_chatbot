@@ -59,6 +59,14 @@ export async function kvKeys(pattern) {
   return out;
 }
 export async function kvDel(key) { return hasSheets() ? sheets_kvDel(key) : redisCmd(['DEL', key]); }
+// 횟수 세기(로그인 잠금·AI 호출 한도용). 일정 시간(ttl초) 뒤 자동으로 사라진다. 시트 저장소에선 세지 않는다(0).
+export async function kvIncr(key, ttl) {
+  if (hasSheets()) return 0;
+  const n = await redisCmd(['INCR', key]);
+  if (n === 1 && ttl) await redisCmd(['EXPIRE', key, String(ttl)]);
+  return n;
+}
+export async function kvClear(key) { if (!hasSheets()) await redisCmd(['DEL', key]); }
 
 /* ---------- Google 서비스 계정 JWT → OAuth2 액세스 토큰 (웜 인스턴스 간 캐시) ---------- */
 let _token = null, _tokenExp = 0;

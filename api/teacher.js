@@ -1,7 +1,7 @@
 // 교사·연구자용 API — 학생 목록, 데이터 내려받기(CSV/JSON), 그림 비밀번호 초기화
 // 인증: Vercel 환경변수 TEACHER_KEY 와 같은 값을 요청 본문 key 로 보내야 한다(POST만 허용, 주소에 키를 남기지 않음).
 import crypto from 'node:crypto';
-import { ready, kvGet, kvSet, kvKeys, hashPin } from './_store.js';
+import { ready, kvGet, kvSet, kvKeys, kvClear, hashPin } from './_store.js';
 
 const NICK_RE = /^[\p{L}\p{N} _.\-]{1,16}$/u;
 function keyOk(k) {
@@ -81,6 +81,7 @@ export default async function handler(req, res) {
       if (!raw) { res.status(404).json({ error: '그런 이름의 학생이 없어요.' }); return; }
       const rec = JSON.parse(raw); const { h, s } = hashPin(pin);
       await kvSet('user:' + nick, JSON.stringify({ ...rec, h, s, resetAt: new Date().toISOString() }));
+      await kvClear('fail:' + nick); // 로그인 잠금도 함께 푼다
       res.status(200).json({ ok: true }); return;
     }
     res.status(400).json({ error: '알 수 없는 요청이에요.' });

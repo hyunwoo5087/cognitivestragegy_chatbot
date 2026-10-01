@@ -6,7 +6,11 @@
 //
 // (개선) 예전엔 인증 없이 누구나 이 주소로 API 키를 쓸 수 있었다(비용·남용 위험).
 // 이제 로그인 쿠키(sess)가 있는 요청만 통과시키고, 모델·temperature·메시지 크기를 제한한다.
-import { ready, readToken, getCookie } from './_store.js';
+import { ready, readToken, getCookie, kvIncr } from './_store.js';
+
+// (개선) 로그인한 학생 한 명이 10분에 AI를 부를 수 있는 횟수. 보통 공부 한 번에 40번 안팎이라 넉넉하고,
+// 키를 다른 용도로 마구 쓰는 것만 막는다.
+const RATE_PER_10MIN = 150;
 
 // Upstage 공지: solar-pro2·solar-pro3·solar-mini는 2026-10-30(KST) 종료 → solar-pro4·solar-mini4로 옮긴다.
 // 예전 화면(캐시된 index.html)이 옛 이름을 보내도 끊기지 않게 새 이름으로 바꿔 보낸다.
@@ -25,6 +29,11 @@ export default async function handler(req, res) {
   if (!r.secret) { res.status(500).json({ error: "서버 인증 설정(AUTH_SECRET)이 없습니다." }); return; }
   const nick = readToken(getCookie(req, 'sess'));
   if (!nick) { res.status(401).json({ error: "먼저 공부방에 들어와 주세요." }); return; }
+
+  try {
+    const n = await kvIncr('rl:' + nick + ':' + Math.floor(Date.now() / 600000), 660);
+    if (n > RATE_PER_10MIN) { res.status(429).json({ error: 'AI를 너무 자주 불렀어요. 잠깐 쉬었다가 다시 해 주세요.' }); return; }
+  } catch (e) { /* 횟수 세기에 실패해도 공부는 계속되게 한다 */ }
 
   const apiKey = process.env.UPSTAGE_API_KEY;
   if (!apiKey) {

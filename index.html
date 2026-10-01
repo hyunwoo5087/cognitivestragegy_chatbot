@@ -541,9 +541,9 @@
   :root{
     --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f4f6f8;
     --line:#eceef1; --line-strong:#dde1e6;
-    --ink:#191f28; --ink-2:#4e5968; --muted:#8b95a1;
-    --accent:#3182f6; --accent-ink:#1b64da; --accent-wash:#edf4ff;
-    --primary:#3182f6; --on-primary:#ffffff;
+    --ink:#191f28; --ink-2:#4e5968; --muted:#636d7a; /* 흰·회색 바탕 모두 4.5:1 이상(WCAG AA) — 예전 #8b95a1은 3.0:1 */
+    --accent:#1f6fe5; --accent-ink:#1857c4; --accent-wash:#edf4ff; /* 흰 글자 대비 4.7:1 */
+    --primary:#1f6fe5; --on-primary:#ffffff;
     --warn:#d9480f; --warn-wash:#fff4ec;
     --info:#3182f6; --info-wash:#f2f6fd;
     --teal:#3182f6; --teal-ink:#1b64da; --teal-wash:#ffffff;
@@ -620,6 +620,7 @@
   .strat-card .sc-when{background:transparent!important;padding:0!important;margin:0!important;font-size:12px;color:var(--muted)!important}
   .strat-card .sc-tips{margin-top:6px}
   .sp-confirm{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2);border-radius:12px;padding:8px 8px 8px 14px;font-size:13px;color:var(--ink-2);position:sticky;bottom:0}
+  #scrim{z-index:70} /* 안내 창은 손글씨·판단 창 위에 보여야 한다(같은 높이라 뒤에 가려졌음) */
   .side-more{border-radius:14px;background:var(--surface-2);padding:12px 14px}
   .side-more summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2);list-style:none}
   .side-more summary::-webkit-details-marker{display:none}
@@ -840,10 +841,10 @@
       </div>
       <div id="agg-analysis-box" class="callout info" style="margin:0 0 12px" hidden></div>
       <div class="growth-tabs" role="tablist">
-        <button type="button" class="gt on" data-tab="strategy">공부 방법</button>
-        <button type="button" class="gt" data-tab="prepost">공부 전·후</button>
-        <button type="button" class="gt" data-tab="prompt">질문 실력</button>
-        <button type="button" class="gt" data-tab="meta">스스로 점검</button>
+        <button type="button" class="gt on" role="tab" aria-selected="true" data-tab="strategy">공부 방법</button>
+        <button type="button" class="gt" role="tab" aria-selected="false" data-tab="prepost">공부 전·후</button>
+        <button type="button" class="gt" role="tab" aria-selected="false" data-tab="prompt">질문 실력</button>
+        <button type="button" class="gt" role="tab" aria-selected="false" data-tab="meta">스스로 점검</button>
       </div>
       <div class="gp" data-panel="strategy">
         <p class="gp-read">읽는 법: 막대가 길수록 그 방법을 자주 썼어요. 초록 표시는 그 방법을 쓴 공부에서 점수가 평균 얼마나 달라졌는지예요.</p>
@@ -1801,7 +1802,7 @@ async function flushSave(){
   clearTimeout(_saveTimer); _saveTimer = null;
   const acc = account(); if(!acc) return;
   try{
-    await apiJSON('/api/data', { method:'PUT', body: JSON.stringify({ created:acc.created, sessions:acc.sessions, draft: acc.draft || null }) });
+    await apiJSON('/api/data', { method:'PUT', body: JSON.stringify({ created:acc.created, sessions:acc.sessions, draft: acc.draft || null, removed: acc.removed || [] }) });
   }catch(e){ console.warn('저장 실패:', e.message); }
 }
 /* ===== (사용성) 하던 공부 이어서 하기 =====
@@ -1844,10 +1845,10 @@ function resumeDraft(){
 window.addEventListener('beforeunload', ()=>{
   if(!_saveTimer) return;
   const acc = account(); if(!acc) return;
-  if(LOCAL_MODE){ try{ localApi('/api/data', { method:'PUT', body: JSON.stringify({ created:acc.created, sessions:acc.sessions, draft: acc.draft || null }) }); }catch(e){} return; }
+  if(LOCAL_MODE){ try{ localApi('/api/data', { method:'PUT', body: JSON.stringify({ created:acc.created, sessions:acc.sessions, draft: acc.draft || null, removed: acc.removed || [] }) }); }catch(e){} return; }
   try{
     navigator.sendBeacon('/api/data', new Blob(
-      [JSON.stringify({ created:acc.created, sessions:acc.sessions, draft: acc.draft || null })], { type:'application/json' }));
+      [JSON.stringify({ created:acc.created, sessions:acc.sessions, draft: acc.draft || null, removed: acc.removed || [] })], { type:'application/json' }));
   }catch(e){}
 });
 // 이전 버전에서 브라우저에 남아있던 로컬 데이터 흔적 정리
@@ -2274,7 +2275,7 @@ function renderGrowth(S, sc, topStrat){
   $('#agg-meta-chart').style.display = ms.length < 2 ? 'none' : '';
 }
 function showGrowthTab(tab){
-  $$('.growth-tabs .gt').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  $$('.growth-tabs .gt').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); b.setAttribute('aria-selected', String(b.dataset.tab === tab)); });
   $$('.growth .gp').forEach(p => p.hidden = p.dataset.panel !== tab);
   try{ localStorage.setItem('growthTab', tab); }catch(e){}
   setTimeout(() => [typeof aggResidualChart!=='undefined'?aggResidualChart:null, typeof aggSubjectDeltaChart!=='undefined'?aggSubjectDeltaChart:null, typeof aggMetaChart!=='undefined'?aggMetaChart:null, typeof aggPromptBarChart!=='undefined'?aggPromptBarChart:null, typeof aggPromptLineChart!=='undefined'?aggPromptLineChart:null].forEach(c => { try{ c && c.resize && c.resize(); }catch(e){} }), 30);
@@ -2378,6 +2379,7 @@ function seedSampleSessions(){
 }
 function clearSampleSessions(){
   const acc = account(); if(!acc) return;
+  acc.removed = acc.sessions.filter(s=>s.isSample).map(s=>s.id); // 서버는 합쳐 저장하므로 지울 것을 따로 알린다
   acc.sessions = acc.sessions.filter(s=>!s.isSample);
   flushSave();
   renderHome();
@@ -2451,7 +2453,7 @@ function renderTaskBlocks(){
   sliderBox.innerHTML = movable.map(b=>{
     const v = stTaskBlocks[b.id];
     return `<div class="tb-slide-row"><div class="tb-slide-label"><span>${esc(b.label)}</span><span class="tb-slide-val">${tbSliderLabel(v)}</span></div>
-      <input type="range" class="tb-slide" data-id="${b.id}" min="0" max="100" step="10" value="${v}">
+      <input type="range" class="tb-slide" aria-label="${esc(b.label.replace(/^\S+\s/,''))} — 0은 AI가, 100은 내가 맡아요" data-id="${b.id}" min="0" max="100" step="10" value="${v}">
       <div class="tb-slide-ends"><span>AI가 맡아요</span><span>내가 맡아요</span></div>
     </div>`;
   }).join('');
@@ -2468,7 +2470,7 @@ function fillStartStds(){
   let list = (CURRICULUM_STANDARDS[band] && CURRICULUM_STANDARDS[band][subj]) || [];
   if(q) list = list.filter(it => (it.name+it.code+it.area).includes(q));
   $('#st-std').innerHTML = list.length
-    ? list.map(it=>`<button class="chip ${stPicks.some(p=>p.code===it.code)?'is-selected':''}" data-code="${esc(it.code)}" title="${esc(it.concept||'')}">${it.area?`<b style="color:var(--muted);font-weight:700">[${esc(it.area)}]</b> `:''}<span style="opacity:.55">${esc(it.code)}</span> ${esc(it.name)}</button>`).join('')
+    ? list.map(it=>`<button class="chip ${stPicks.some(p=>p.code===it.code)?'is-selected':''}" data-code="${esc(it.code)}" title="${esc(it.concept||'')}">${it.area?`<b style="color:var(--muted);font-weight:700">[${esc(it.area)}]</b> `:''}<span style="color:var(--muted)">${esc(it.code)}</span> ${esc(it.name)}</button>`).join('')
     : '<p class="hint" style="padding:8px">그런 내용은 없어요. 다른 낱말로 찾아볼까요?</p>';
   syncStartGo();
 }
@@ -2515,7 +2517,7 @@ async function matchStandardFromGoal(){
   if(busy) return;
   const text = ($('#st-topic').value||'').trim();
   const statusEl = $('#st-match-status');
-  if(text.replace(/\s/g,'').length < 4){ modal('안내','조금 더 자세히 적어볼까요? 예를 들면 "분수를 그림으로 나타내면서 더하는 방법을 알고 싶어요"처럼요.'); return; }
+  if(text.replace(/\s/g,'').length < 2){ modal('안내','조금 더 자세히 적어볼까요? 예를 들면 "분수를 그림으로 나타내면서 더하는 방법을 알고 싶어요"처럼요.'); return; }
   statusEl.hidden = false; statusEl.textContent = '딱 맞는 내용을 찾는 중…';
   const band = bandOf($('#st-band').value);
   // 요청사항(2번째 피드백) 4: 위에서 과목을 미리 골랐으면 그 과목 안에서만 찾는다(더 정확해짐).
@@ -2607,7 +2609,9 @@ function enterChat(){
   const micBtn = $('#btn-mic');
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   micBtn.hidden = !(SR && session.ctx.subject==='영어');
-  $('#btn-handwrite').hidden = session.ctx.subject!=='수학';
+  $('#btn-handwrite').hidden = session.ctx.subject!=='수학' || ocrAvailable!==true;
+  // (개선) 손글씨 인식은 서버에 인식 서비스가 설정돼 있을 때만 보여 준다(없으면 누르자마자 오류 창이 떴다).
+  if(session.ctx.subject==='수학' && ocrAvailable===null){ apiJSON('/api/ocr', { method:'POST', body: JSON.stringify({ probe:true }) }).then(r=>{ ocrAvailable = !!(r && r.available); }).catch(()=>{ ocrAvailable = false; }).finally(()=>{ if(session) $('#btn-handwrite').hidden = session.ctx.subject!=='수학' || ocrAvailable!==true; }); }
   $('#math-symbols').hidden = session.ctx.subject!=='수학';
   $('#btn-tools').hidden = session.ctx.subject!=='수학';
   if(!session.turns.length){
@@ -2653,6 +2657,7 @@ function hwPos(e, canvas){
   return { x: cx * (canvas.width/rect.width), y: cy * (canvas.height/rect.height) };
 }
 function hwClear(){
+  hwInked = false;
   const canvas = $('#hw-canvas'); const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
 }
@@ -2664,7 +2669,9 @@ function openHandwriteModal(){
   $('#hw-scrim').classList.add('open');
 }
 function closeHandwriteModal(){ $('#hw-scrim').classList.remove('open'); }
-function hwStart(e){ e.preventDefault(); hwDrawing = true; const p = hwPos(e, $('#hw-canvas')); hwLastX=p.x; hwLastY=p.y; }
+let hwInked = false;
+let ocrAvailable = null; // null=아직 모름, true/false=서버 확인 결과
+function hwStart(e){ e.preventDefault(); hwDrawing = true; hwInked = true; const p = hwPos(e, $('#hw-canvas')); hwLastX=p.x; hwLastY=p.y; }
 function hwMove(e){
   if(!hwDrawing) return; e.preventDefault();
   const canvas = $('#hw-canvas'); const ctx = canvas.getContext('2d');
@@ -2690,6 +2697,7 @@ async function refineMathOcr(raw){
 }
 async function hwRecognize(){
   const canvas = $('#hw-canvas');
+  if(!hwInked){ modal('안내', '먼저 네모 칸에 풀이를 써 주세요.'); return; }
   const base64 = canvas.toDataURL('image/png').split(',')[1];
   const btn = $('#hw-recognize-btn');
   btn.disabled = true; btn.textContent = '읽는 중…';
@@ -3784,7 +3792,7 @@ function aqFieldHTML(it, i){
       </div>
     </div>`;
   }
-  return `<div><label class="field-label">${i+1}. ${esc(it.q)}</label><textarea class="textarea aq-a" data-i="${i}" rows="2">${esc(it.a)}</textarea></div>`;
+  return `<div><label class="field-label">${i+1}. ${esc(it.q)}</label><textarea class="textarea aq-a" aria-label="${i+1}번 답: ${esc(it.q)}" data-i="${i}" rows="2">${esc(it.a)}</textarea></div>`;
 }
 async function gradeActivationQuiz(){
   try{
@@ -4724,7 +4732,7 @@ function resAnswerFieldHTML(it, i, ansStrat){
       </div>
     </div>`;
   }
-  return `<div><label class="field-label">내 풀이 / 답</label><textarea class="textarea res-a" data-i="${i}">${esc(it.a)}</textarea></div>`;
+  return `<div><label class="field-label">내 풀이 / 답</label><textarea class="textarea res-a" aria-label="${i+1}번 풀이와 답" data-i="${i}">${esc(it.a)}</textarea></div>`;
 }
 function renderResidualQuiz(){
   $('#res-items').innerHTML = session.residual.items.map((it,i)=>{
@@ -4737,8 +4745,8 @@ function renderResidualQuiz(){
         ${banner}
         <p class="prompt">${esc(it.q)}</p>
         ${resAnswerFieldHTML(it, i, itemStrat)}
-        <div><label class="field-label">왜 그렇게 풀었는지 설명 ${resExplainRequired(it)?'<span class="req-tag">꼭 적어요</span>':'<span class="opt-tag">선택</span>'}</label><textarea class="textarea res-e" data-i="${i}" placeholder="맞았는지 틀렸는지는 상관없어요. 어떻게 생각했는지 적어요">${esc(it.e)}</textarea></div>
-        <div><label class="field-label">이 답, 얼마나 자신 있어요?</label><input type="range" class="range res-c" data-i="${i}" min="0" max="100" step="10" value="${it.c}" /><div class="range-val res-c-val" data-i="${i}">${it.c}%</div></div>
+        <div><label class="field-label">왜 그렇게 풀었는지 설명 ${resExplainRequired(it)?'<span class="req-tag">꼭 적어요</span>':'<span class="opt-tag">선택</span>'}</label><textarea class="textarea res-e" aria-label="${i+1}번 왜 그렇게 풀었는지 설명" data-i="${i}" placeholder="맞았는지 틀렸는지는 상관없어요. 어떻게 생각했는지 적어요">${esc(it.e)}</textarea></div>
+        <div><label class="field-label">이 답, 얼마나 자신 있어요?</label><input type="range" class="range res-c" aria-label="${i+1}번 답 자신감(0~100%)" data-i="${i}" min="0" max="100" step="10" value="${it.c}" /><div class="range-val res-c-val" data-i="${i}">${it.c}%</div></div>
       </div>
     </div>
   `;
@@ -4823,7 +4831,7 @@ function renderResidualResult(){
   ];
   $('#axis-body').innerHTML = rows.map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
   $$('#res-judge .choice').forEach(b=> b.classList.toggle('is-selected', b.dataset.v===session.residual.judge));
-  $('#res-comment').hidden = session.residual.judge!=='comment';
+  $('#res-comment').hidden = !(session.residual.judge==='comment' || session.residual.judge==='hold'); // 안내문대로 '잘 모르겠어요'도 이유 칸을 연다
   $('#res-comment').value = session.residual.comment||'';
   $('#res-journal').value = session.residual.journal||'';
   syncResFinish();

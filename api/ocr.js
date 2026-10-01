@@ -11,6 +11,8 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
   const r = ready();
+  // 화면이 손글씨 버튼을 보여 줄지 정하려고 먼저 물어본다(인식 서비스가 설정돼 있는지만 알려 줌).
+  if ((req.body || {}).probe) { res.status(200).json({ available: !!r.vision }); return; }
   if (!r.vision) {
     res.status(500).json({ error: '지금 손글씨 인식을 쓸 수 없어요(서버에 Google 자격증명이 설정되어 있지 않아요).' });
     return;

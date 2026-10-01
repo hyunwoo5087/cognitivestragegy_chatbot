@@ -1,8 +1,12 @@
 // 회원가입 / 로그인 / 로그아웃 — 그림 비밀번호 잠금 계정
 import {
-  ready, kvGet, kvSet, kvSetNX,
+  ready, kvGet, kvSet, kvSetNX, kvIncr, kvClear,
   hashPin, verifyPin, makeToken, setCookie
 } from './_store.js';
+
+// (개선) 그림 비밀번호는 24개 그림 중 4개 순서라 경우의 수가 약 25만 개뿐이다. 같은 이름으로 10번 연속
+// 틀리면 10분 동안 로그인을 막아, 친구 공부방을 마구 맞혀 들어가는 것을 막는다. 선생님 초기화로 풀린다.
+const MAX_FAILS = 10, LOCK_SEC = 600;
 
 const NICK_RE = /^[\p{L}\p{N} _.\-]{1,16}$/u;
 
@@ -49,7 +53,16 @@ export default async function handler(req, res) {
       const raw = await kvGet(uKey);
       if (!raw) { res.status(404).json({ error: '아직 없는 이름이에요. [처음이에요]에서 공부방을 먼저 만들어 주세요.' }); return; }
       const rec = JSON.parse(raw);
-      if (!verifyPin(pin, rec.s, rec.h)) { res.status(401).json({ error: '그림 비밀번호가 달라요. 그림 4개를 고른 순서까지 같아야 해요. 잊었으면 선생님께 말해 주세요.' }); return; }
+      const failKey = 'fail:' + nickname;
+      const prevFails = Number(await kvGet(failKey)) || 0;
+      if (prevFails >= MAX_FAILS) { res.status(429).json({ error: '그림 비밀번호를 여러 번 틀려서 10분 동안 잠겼어요. 잠시 뒤 다시 하거나 선생님께 말해 주세요.' }); return; }
+      if (!verifyPin(pin, rec.s, rec.h)) {
+        const n = await kvIncr(failKey, LOCK_SEC);
+        const left = MAX_FAILS - n;
+        res.status(401).json({ error: '그림 비밀번호가 달라요. 그림 4개를 고른 순서까지 같아야 해요. 잊었으면 선생님께 말해 주세요.' + (n && left <= 3 && left > 0 ? ` (${left}번 더 틀리면 10분 동안 잠겨요)` : '') });
+        return;
+      }
+      if (prevFails) await kvClear(failKey);
       let data = null;
       try { data = JSON.parse(await kvGet(dKey)); } catch (e) { data = null; }
       if (!data || !Array.isArray(data.sessions)) data = { nickname, created: rec.created, sessions: [] };
