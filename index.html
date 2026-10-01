@@ -1037,7 +1037,7 @@
           <button type="button" class="sym-btn" data-sym="π">π</button>
         </div>
         <div class="row">
-          <button type="button" class="icon-btn" id="btn-mic" title="말해서 입력하기(영어)" hidden style="width:40px">🎤</button>
+          <button type="button" class="icon-btn" id="btn-mic" title="말해서 입력하기(영어)" aria-label="영어로 말해서 입력하기" aria-pressed="false" hidden style="width:40px">🎤</button>
           <button type="button" class="icon-btn" id="btn-handwrite" title="손글씨로 풀기(수학)" hidden style="width:40px">✍️</button>
           <input class="input" id="chat-input" placeholder="편하게 말해도 돼요. 내 생각이나 예상을 먼저 적어 보세요." autocomplete="off" />
           <button class="btn btn-primary" id="chat-send">보내기</button>
@@ -2619,27 +2619,65 @@ function enterChat(){
     advancePrep();
   }
 }
-let micRec = null, micOn = false;
+let micRec = null, micOn = false, micField = null;
+// (개선) 마이크로 말한 내용은 "마지막으로 누른 쓰기 칸"에 넣는다. 예전엔 늘 아래 대화 입력칸에만 넣어서,
+// 아는 것 확인·이해도 체크 이유처럼 위쪽 칸에 답할 때는(대화 입력칸이 잠겨 있어) 말한 내용이 사라졌다.
+document.addEventListener('focusin', e=>{
+  const el = e.target;
+  if(el && el.matches && el.matches('[data-screen="chat"] textarea, [data-screen="chat"] input.input, [data-screen="chat"] input[type=text]') && !el.readOnly) micField = el;
+});
+function micTarget(){
+  if(micField && document.contains(micField) && !micField.disabled && micField.offsetParent) return micField;
+  const inp = $('#chat-input');
+  return inp && !inp.disabled ? inp : null;
+}
+const MIC_ERR = {
+  'not-allowed':'마이크를 쓸 수 없어요. 주소창 왼쪽 자물쇠를 눌러 마이크를 "허용"으로 바꾼 뒤 다시 눌러 주세요.',
+  'service-not-allowed':'이 브라우저에서는 말해서 입력하기를 쓸 수 없어요. 크롬이나 엣지로 열어 주세요.',
+  'audio-capture':'마이크를 찾지 못했어요. 마이크(이어폰)가 연결돼 있는지 확인해 주세요.',
+  'no-speech':'소리가 들리지 않았어요. 버튼을 누르고 또박또박 영어로 말해 보세요.',
+  'network':'인터넷 연결이 불안정해 말을 글로 바꾸지 못했어요. 잠시 뒤 다시 해 보세요.',
+  'language-not-supported':'이 브라우저는 영어 음성 인식을 지원하지 않아요. 크롬이나 엣지로 열어 주세요.'
+};
+function setMicUi(on){
+  const b = $('#btn-mic'); if(!b) return;
+  b.classList.toggle('is-selected', on); b.textContent = on ? '⏹️' : '🎤';
+  b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  b.setAttribute('aria-label', on ? '듣는 중 — 누르면 멈춰요' : '영어로 말해서 입력하기');
+  b.title = on ? '듣는 중… 다 말하면 다시 눌러요' : '말해서 입력하기(영어)';
+}
 function toggleMic(){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR) return;
   if(micOn){ micRec && micRec.stop(); return; }
+  const target = micTarget();
+  if(!target){ modal('안내', '먼저 답을 쓸 칸을 한 번 누른 다음 마이크를 눌러 주세요.'); return; }
   micRec = new SR();
   micRec.lang = 'en-US'; micRec.interimResults = false; micRec.maxAlternatives = 1;
-  micOn = true; $('#btn-mic').classList.add('is-selected'); $('#btn-mic').textContent = '⏹️';
+  micOn = true; setMicUi(true);
   micRec.onresult = (e)=>{
-    const said = e.results[0][0].transcript;
-    const el = $('#chat-input'); el.value = (el.value ? el.value+' ' : '') + said;
+    const said = (e.results[0][0].transcript||'').trim(); if(!said) return;
+    target.value = (target.value ? target.value.replace(/\s+$/,'')+' ' : '') + said;
+    target.dispatchEvent(new Event('input', { bubbles:true })); // 화면 상태(답 저장·버튼 켜짐)도 같이 바뀌게
+    try{ target.focus(); }catch(_){}
   };
-  const stop = ()=>{ micOn=false; $('#btn-mic').classList.remove('is-selected'); $('#btn-mic').textContent='🎤'; };
-  micRec.onerror = stop; micRec.onend = stop;
-  micRec.start();
+  micRec.onerror = (e)=>{ const m = MIC_ERR[e && e.error]; if(m) modal('안내', m); };
+  micRec.onend = ()=>{ micOn = false; setMicUi(false); };
+  try{ micRec.start(); }catch(_){ micOn = false; setMicUi(false); }
 }
 // AI 말풍선을 영어 발음으로 들어볼 수 있게(듣기 연습). 브라우저 내장 TTS라 별도 키 불필요.
+// (개선) AI 말풍선은 대부분 한국어 설명 + 영어 예문이다. 예전엔 전체를 영어 목소리로 읽어 한국어가
+// 뭉개져 들렸다. 영어 부분만 골라 읽고, 영어가 없는 말풍선엔 [들어보기]를 보이지 않는다.
+function englishParts(text){
+  const parts = String(text||'').replace(/[*_`#>]/g,' ').match(/[A-Za-z][A-Za-z0-9'’,.!?;:\- ]*[A-Za-z0-9.!?]/g) || [];
+  return parts.map(p=>p.trim()).filter(p=>/[A-Za-z]{2,}/.test(p));
+}
 function speakText(text){
   if(!window.speechSynthesis) return;
+  const parts = englishParts(text);
+  if(!parts.length) return;
   window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(String(text));
+  const u = new SpeechSynthesisUtterance(parts.map(p=>/[.!?]$/.test(p)?p:p+'.').join(' '));
   u.lang = 'en-US'; u.rate = 0.92;
   window.speechSynthesis.speak(u);
 }
@@ -3059,7 +3097,7 @@ function renderStream(){
       const stCls = j==='accept'?'st-accept':j==='hold'?'st-hold':j==='comment'?'st-comment':'';
       const label = j==='accept'?'좋아요':j==='hold'?'잘 모르겠어요':j==='comment'?'다른 생각':'이 말 판단하기';
       extra += `<div class="msg-acts"><button type="button" class="msg-act judge-trigger ${stCls}" data-id="${t.id}">${label}</button>`;
-      if(session.ctx.subject==='영어' && window.speechSynthesis && t.text) extra += `<button type="button" class="msg-act speak-btn" data-id="${t.id}" title="영어 발음으로 들어보기">들어보기</button>`;
+      if(session.ctx.subject==='영어' && window.speechSynthesis && t.text && englishParts(t.text).length) extra += `<button type="button" class="msg-act speak-btn" data-id="${t.id}" title="영어 발음으로 들어보기">들어보기</button>`;
       // 원리10 [대화 중: 대화 전반 지침] 3: "학습자가 AI 챗봇과 대화하는 과정 전반의 맥락에서"
       // 산출 과정을 제공하라고 돼 있다 — "판단하기"(위 judge-trigger)가 phase 구분 없이 모든
       // AI 말풍선에 뜨는 것과 같은 범위여야 정합성이 맞다(이전엔 explore로만 좁혀 놨던 것을 넓힘).
