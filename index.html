@@ -766,6 +766,8 @@
   .head-link{min-height:30px;padding-top:4px;padding-bottom:4px}
   .starters button{min-height:30px}
   .tools-btn{min-height:30px}
+  .msc-ind{display:flex;flex-wrap:wrap;gap:4px 10px;margin:-2px 0 6px;font-size:12px;color:var(--muted)}
+  .msc-ind span.on{color:var(--accent-ink);font-weight:600}
 </style>
 </head>
 <body>
@@ -1612,7 +1614,7 @@ async function issueTask(strat, leadInstr){
     try{ spec = await generateTaskSpec(strat); }catch(e){ spec = null; }
     $('#pending')?.remove(); busy = false; syncComposeLock();
   }
-  if(spec){ session.currentTask = spec; (session.tasks = session.tasks||[]).push(spec); }
+  if(spec){ spec._turn = session.turns.length; session.currentTask = spec; (session.tasks = session.tasks||[]).push(spec); session.ansReq = { n:0 }; }
   const specInstr = spec
     ? ` 이번에 낼 과업은 이미 정해져 있다 — 과업: "${spec.task}" (결과물: ${spec.form}). 이 과업을 네 말로 자연스럽게 1개만 건네라. 과업 속 답이나 예시를 미리 알려주지 마라. 성공 기준은 화면에 따로 보이니 나열하지 마라.`
     : ` 지금 방법(${strat?strat.label:'선택한 방법'})의 원칙에 맞는 과업 1개를 내라: ${strat?STRAT_TASK_GUIDE[strat.id]:''}`;
@@ -1681,7 +1683,23 @@ function evalCardHTML(ev){
   </div>`;
 }
 function isAnswerRequest(v){
-  return /(답\s*(좀\s*)?(알려|말해|가르쳐)|정답\s*(이\s*)?(뭐|알려|말해)|대신\s*(해|풀어|써|만들어)|그냥\s*(풀어|알려|해\s*줘)|풀어\s*줘|답만)/.test(String(v));
+  return /(답\s*(좀|이나|을|만)?\s*(좀\s*)?(알려|말해|가르쳐)|핵심만\s*(좀\s*)?알려|정답\s*(이\s*)?(뭐|알려|말해)|대신\s*(해|풀어|써|만들어)|그냥\s*(풀어|알려|해\s*줘)|풀어\s*줘|답만)/.test(String(v));
+}
+// (원리1·9·11) 지금 과업에서 학습자가 직접 시도했는지. 글자 수만 보면 "점심에 떡볶이 먹었어" 같은 딴소리도
+// 시도로 잡히므로, ① 이 과업의 시도가 이미 진단(evaluateAttempt)됐거나 ② 방금 말에 요청 문구를 빼고도
+// 식·계산이 있거나 과업 내용의 낱말을 2개 이상 써서 답하려 한 흔적이 있을 때만 시도로 본다.
+function attemptedSinceTask(v){
+  const spec = session.currentTask;
+  if(spec && (spec.evals||[]).some(e=>e && (e.level>=1 || (String(e.attempt||'').replace(/\s/g,'').length>=10 && !isHelpRequest(e.attempt) && !/^(몰라|모르겠)/.test(String(e.attempt).trim()))))) return true;
+  const rest = String(v||'').replace(/(그냥|좀|빨리|제발)?\s*(답\s*(좀|이나|을|만)?\s*(좀\s*)?(알려|말해|가르쳐)\s*(줘|주세요)?|정답\s*(이\s*)?(뭐야|뭐|알려\s*줘|말해\s*줘)|대신\s*(해|풀어|써|만들어)\s*줘?|풀어\s*줘|답만\s*(알려\s*줘)?)/g,' ');
+  if(/\d\s*[+\-*/=×÷]\s*\d|\d+\s*\/\s*\d+/.test(rest)) return true;
+  if(spec){
+    const words = new Set((String(spec.task||'')+' '+String(spec.content||'')+' '+(spec.criteria||[]).join(' ')).match(/[가-힣A-Za-z]{2,}/g)||[]);
+    const STOP = new Set(['그리고','그래서','하기','해보기','설명','내가','자기','말로','이유','것을','있는','하는','에서','으로']);
+    const hit = (rest.match(/[가-힣A-Za-z]{2,}/g)||[]).filter(w=>!STOP.has(w) && [...words].some(k=>k.length>=2 && (w.startsWith(k)||k.startsWith(w)))).length;
+    if(hit >= 2) return true;
+  }
+  return false;
 }
 function isHelpRequest(v){
   const t = String(v).trim();
@@ -2693,7 +2711,7 @@ function setMicUi(on){
   b.classList.toggle('is-selected', on); b.textContent = on ? '⏹️' : '🎤';
   b.setAttribute('aria-pressed', on ? 'true' : 'false');
   b.setAttribute('aria-label', on ? '듣는 중 — 누르면 멈춰요' : `${micLangName()}로 말해서 입력하기`);
-  b.title = on ? '듣는 중… 다 말하면 다시 눌러요' : `말해서 입력하기(${micLangName()})`;
+  b.title = on ? '듣는 중… 다 말하면 다시 눌러 멈춰요' : `말해서 입력하기(${micLangName()}) — 마이크에 가까이, 또박또박`;
 }
 function toggleMic(){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2707,16 +2725,29 @@ function toggleMic(){
   const target = micTarget();
   if(!target){ modal('안내', '먼저 답을 쓸 칸을 한 번 누른 다음 마이크를 눌러 주세요.'); return; }
   micRec = new SR();
-  micRec.lang = micLang; micRec.interimResults = false; micRec.maxAlternatives = 1;
+  micRec.lang = micLang;
+  // (개선) "잘 인식이 안 된다": 한 번 끊기면 바로 꺼지던 방식(continuous=false) 대신, 학생이 [멈춤]을 누를 때까지
+  // 계속 듣고, 들리는 대로 칸에 바로 보여 준다(중간 결과). 후보 3개 중 가장 확실한 것을 고른다.
+  // 말이 멈춘 뒤 6초 동안 아무 소리가 없으면 스스로 끈다.
+  micRec.continuous = true; micRec.interimResults = true; micRec.maxAlternatives = 3;
   micOn = true; setMicUi(true);
+  const base = target.value ? target.value.replace(/\s+$/,'') + ' ' : '';
+  let finalText = '', idleT = null;
+  const bump = ()=>{ clearTimeout(idleT); idleT = setTimeout(()=>{ try{ micRec.stop(); }catch(_){ } }, 6000); };
+  const best = res => { let b = res[0]; for(let k=1;k<res.length;k++) if((res[k].confidence||0) > (b.confidence||0)) b = res[k]; return (b.transcript||'').trim(); };
   micRec.onresult = (e)=>{
-    const said = (e.results[0][0].transcript||'').trim(); if(!said) return;
-    target.value = (target.value ? target.value.replace(/\s+$/,'')+' ' : '') + said;
+    let interim = '';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const t = best(e.results[i]);
+      if(e.results[i].isFinal){ if(t) finalText += (finalText?' ':'') + t; } else interim += (interim?' ':'') + t;
+    }
+    target.value = base + finalText + (interim ? (finalText?' ':'') + interim : '');
     target.dispatchEvent(new Event('input', { bubbles:true })); // 화면 상태(답 저장·버튼 켜짐)도 같이 바뀌게
-    try{ target.focus(); }catch(_){}
+    bump();
   };
-  micRec.onerror = (e)=>{ const m = MIC_ERR[e && e.error]; if(m) modal('안내', m); };
-  micRec.onend = ()=>{ micOn = false; setMicUi(false); };
+  micRec.onerror = (e)=>{ const m = MIC_ERR[e && e.error]; if(m && !(e.error==='no-speech' && finalText)) modal('안내', m); };
+  micRec.onend = ()=>{ clearTimeout(idleT); micOn = false; setMicUi(false); target.value = base + finalText; target.dispatchEvent(new Event('input', { bubbles:true })); try{ target.focus(); }catch(_){ } };
+  bump();
   try{ micRec.start(); }catch(_){ micOn = false; setMicUi(false); }
 }
 // AI 말풍선을 영어 발음으로 들어볼 수 있게(듣기 연습). 브라우저 내장 TTS라 별도 키 불필요.
@@ -3030,7 +3061,7 @@ function paintProcessBar(){
 function pushNote(text){ session.turns.push({ id:uid(), role:'note', text }); renderStream(); }
 function pushMetaScoreCard(){
   const md = session.meta.scoreDetail; if(!md) return;
-  session.turns.push({ id:uid(), role:'note', kind:'meta-score', text:'', meta:{ ...md, feedback:session.meta.feedback, calib:session.meta.calib||null } });
+  session.turns.push({ id:uid(), role:'note', kind:'meta-score', text:'', meta:{ ...md, indicators:session.meta.indicators||null, feedback:session.meta.feedback, calib:session.meta.calib||null } });
   renderStream();
 }
 function pushMe(text, delegate){ session.turns.push({ id:uid(), role:'me', text, phase:session.phase, delegate:!!delegate, initiative: delegate?'ai':'self' }); renderStream(); }
@@ -3125,13 +3156,16 @@ function renderStream(){
         return;
       }
       if(t.kind==='meta-score' && t.meta){
-        const row = (label,val)=>`<div class="msc-row"><span>${label}</span><span class="bar"><i style="width:${val}%"></i></span><b>${val}점</b></div>`;
+        // (원리7) 하위 지표가 있으면 무엇을 했고 무엇을 더 해 볼지 보여 준다(점수 숫자만 보이던 것 보완).
+        const IND_LABEL = { understand:['헷갈리는 곳 짚기','이유 말하기','언제·어떻게 확인할지'], strategy:['구체적인 방법','고른 이유','언제 쓰고 막히면 무엇으로'], connect:['이어지는 예·개념','같은 점 밝히기','다른 점·한계까지'] };
+        const chips = k => { const I = t.meta.indicators && t.meta.indicators[k]; if(!I) return ''; return `<div class="msc-ind">${['s','r','c'].map((x,i)=>`<span class="${I[x]?'on':''}">${I[x]?'✓':'·'} ${IND_LABEL[k][i]}</span>`).join('')}</div>`; };
+        const row = (label,val,k)=>`<div class="msc-row"><span>${label}</span><span class="bar"><i style="width:${val}%"></i></span><b>${val}점</b></div>${k?chips(k):''}`;
         box.insertAdjacentHTML('beforeend', `<div class="msg note"><div class="meta-score-card">
           <div class="msc-title">스스로 점검 결과 (참고용 · 맞다·틀리다가 아니에요)</div>
           ${session.meta.usualMethod ? `<div class="msc-note"><b>평소 공부법:</b> ${esc(session.meta.usualMethod)}</div>` : ''}
-          ${row('이해 점검(헷갈리는 곳 짚기)', t.meta.understand)}
-          ${row('전략 지식(방법과 이유)', t.meta.strategy)}
-          ${row('연결 짓기', t.meta.connect)}
+          ${row('이해 점검(헷갈리는 곳 짚기)', t.meta.understand, 'understand')}
+          ${row('전략 지식(방법과 이유)', t.meta.strategy, 'strategy')}
+          ${row('연결 짓기', t.meta.connect, 'connect')}
           ${t.meta.calib ? `<div class="msc-note"><b>내 자신감 vs 실제:</b> ${esc(calibSentence(t.meta.calib))}</div>` : ''}
           ${t.meta.feedback ? `<div class="msc-note">${esc(t.meta.feedback)}</div>` : ''}
           <div class="msc-note msc-foot">이 점수는 내 학습터에 쌓여서, 어떤 종류의 스스로 점검을 잘하고 어떤 걸 더 연습하면 좋을지 나중에 돌아볼 때 참고가 돼요.</div>
@@ -3805,11 +3839,20 @@ function shuffleWithAnswer(options, answerIdx){
 async function generateDiagItems(mode){
   const base = `성취기준: "${session.ctx.std}" (${session.ctx.grade||session.ctx.band} · ${session.ctx.subject})\n교육과정 해설(출제 범위 — 벗어나지 말 것): ${session.ctx.concept||'-'}\n학습목표: ${session.goal||'-'}\n`;
   const shape = `{"items":[{"tag":"기억","type":"mcq","q":"...","options":["...","...","...","..."],"answer":0},{"tag":"예시","type":"mcq","q":"...","options":["...","...","...","..."],"answer":2},{"tag":"설명","type":"text","q":"...","rubric":{"full":"만점 답에 꼭 들어갈 핵심 요소","partial":"부분 점수를 줄 수 있는 최소 요소"}},{"tag":"적용","type":"text","q":"...","rubric":{"full":"...","partial":"..."}}]}`;
-  const common = `"기억"·"예시" 문항은 4지선다(type "mcq")로, 정답은 딱 1개이며 answer에 정답 선택지의 번호(0~3)를 적는다. 오답은 그럴듯하되 명백히 틀려야 한다. "설명"·"적용" 문항은 서술형(type "text")이고 rubric에 채점 기준을 적는다. 문장은 학년에 맞게 짧고 쉽게.`;
+  // (2026-10-01 결정: 난이도 사다리 — 원리6 지침 6-2·원리13 평행 문항) 사전 점수가 대부분 75~100점(천장 효과)이라,
+  // 4문항의 인지 수준을 Webb DOK 사다리로 고정한다: 기억(DOK1) → 예시(DOK2) → 설명(DOK2~3) → 적용(DOK3, 성취기준 '상' 수준).
+  // 문항 수·형식은 그대로라 사전–사후 비교는 유지되고, 사후 평행 문항도 같은 사다리로 낸다.
+  const ladder = `난이도 사다리(반드시 지킬 것):
+1) 기억(DOK1·기본): 핵심 용어·사실을 떠올리는 문항. 오답 3개 중 1개 이상은 이 내용에서 학생들이 흔히 하는 오개념에서 나온 그럴듯한 오답으로 만든다.
+2) 예시(DOK2·중간): 개념에 맞는 예를 고르는 문항. 비슷한 개념과 헷갈리는 예를 오답에 넣어, 개념의 경계를 알아야 맞힐 수 있게 한다.
+3) 설명(DOK2~3·중상): "왜/어떻게 그런지" 이유를 자기 말로 쓰는 문항. 만점 기준은 핵심 개념과 그 이유(근거)를 둘 다 써야 충족된다.
+4) 적용(DOK3·상): 수업에서 다루지 않은 새 상황에서 두 단계 이상 생각해야(조건 따지기·두 개념 연결·계산 후 판단 등) 풀리는 문항. 성취기준의 '상' 수준. 답이나 풀이 방법이 문제 문장에 드러나지 않게 한다. 만점 기준은 과정과 결론이 모두 맞아야 충족된다.
+학년 수준을 넘는 지식은 쓰지 말고, 어렵게 만드는 것은 생각의 단계이지 낯선 낱말이 아니다.`;
+  const common = `"기억"·"예시" 문항은 4지선다(type "mcq")로, 정답은 딱 1개이며 answer에 정답 선택지의 번호(0~3)를 적는다. 오답은 그럴듯하되 명백히 틀려야 한다. "설명"·"적용" 문항은 서술형(type "text")이고 rubric에 채점 기준을 적는다. 문장은 학년에 맞게 짧고 쉽게.\n${ladder}`;
   let user;
   if(mode==='post'){
     const prev = (session.prior.items||[]).map((it,i)=>`${i+1}. [${it.tag}] ${it.q}`).join('\n');
-    user = base + `아래는 공부 전에 풀었던 사전 문항이다.\n${prev}\n이와 같은 유형(순서대로 기억·예시·설명·적용), 같은 난이도의 "평행 문항" 4개를 만들어라. 측정하는 내용은 같게 하되 표면 소재(예·숫자·인물·상황)만 바꿔라. 사전 문항이나 대화에서 쓴 표현을 그대로 재사용하지 마라. ${common}\n${shape}`;
+    user = base + `아래는 공부 전에 풀었던 사전 문항이다.\n${prev}\n이와 같은 유형(순서대로 기억·예시·설명·적용), 같은 난이도(아래 사다리의 같은 단계)의 "평행 문항" 4개를 만들어라. 측정하는 내용은 같게 하되 표면 소재(예·숫자·인물·상황)만 바꿔라. 사전 문항이나 대화에서 쓴 표현을 그대로 재사용하지 마라. ${common}\n${shape}`;
   } else {
     user = base + `학습자가 지금 이 내용을 얼마나 알고 있는지 가볍게 확인할 문항 4개를 서로 다른 방식(기억해내기·예시 알아보기·자기 말로 설명하기·다른 상황에 적용하기)으로 만들어라. ${common}\n${shape}`;
   }
@@ -3826,6 +3869,7 @@ async function generateDiagItems(mode){
     return { id:(mode==='post'?'r':'a')+i, tag, q:String(it.q), type: okMcq?'mcq':'text',
       options: okMcq ? sh.options : null, key: okMcq ? sh.key : null,
       rubric: (!okMcq && it.rubric) ? { full:String(it.rubric.full||''), partial:String(it.rubric.partial||'') } : null,
+      dok: ({기억:'1',예시:'2',설명:'2-3',적용:'3'})[tag], ladder:'v2', // 연구 자료: 문항 인지 수준
       a:'', score:null, correct:null, note:'' };
   });
 }
@@ -3932,33 +3976,41 @@ async function gradeMeta(){
   // (개선) 실제 모델 8세션 점검: 딴짓형("그냥 답 알려줘")과 잘 아는 학생이 똑같이 50/50/50을 받는 등
   // 변별이 약했다. 기준점마다 판정 예시를 붙이고, 수준을 정하기 전에 학습자 말을 근거로 인용하게 한다.
   // 채점이 실패하면 한 번 더 시도하고, 그래도 안 되면 비워 둔다(내 공부방 그래프에서 빠짐).
+  // (2026-10-01 결정: 하위 지표 합산 — 원리7·원리3 대시보드 변화) 0/50/100의 3단계라 성실한 학생은 대부분
+  // 100점(천장 효과)이었다. 축마다 세 가지 하위 지표를 있다/없다(0/1)로 판정해 0~3점(4단계)으로 합산한다.
+  // ③은 조건적 지식(언제·왜 쓰는가, Schraw & Dennison, 1994)이라 성실한 학생도 쉽게 다 채우지 못해 천장이 높아진다.
+  // 있다/없다 판정이라 3수준 판정보다 채점이 덜 흔들린다. 저장: meta.indicators, 점수는 0/33/67/100.
   const prompt = `성취기준: "${session.ctx.std}"\n교육과정 해설: ${session.ctx.concept||'-'}\n
 [이해 점검 답] "${A.understand||session.meta.raw||''}"
- 0 = 헷갈리는 곳을 짚지 못함. 예) "몰라", "다 알아", "그냥 답 알려줘", 공부와 무관한 말
- 1 = 헷갈리는 곳을 대략 말했지만 왜 헷갈리는지 이유가 없음. 예) "분모가 헷갈려"
- 2 = 헷갈리는 구체적인 지점과 그 이유를 함께 말함("~라서/~때문에/왜냐하면"처럼 이유가 문장에 드러나야 함). 예) "최소공배수랑 최대공약수 중 뭘 써야 하는지 헷갈려, 둘 다 나눗셈이 나와서"
+ s(구체적 지점) = 헷갈리거나 확신이 없는 부분을 이 내용의 구체적인 개념·단계로 짚었다. 예) "분모가 다를 때 통분하는 단계" (O) / "다 헷갈려", "어려워" (X)
+ r(이유) = 왜 헷갈리는지 이유를 말했다("~라서/~때문에/왜냐하면"). 예) "최소공배수와 최대공약수가 둘 다 나눗셈이 나와서" (O)
+ c(조건·점검 계획) = 언제 헷갈리는지 조건을 구분했거나, 그 부분을 어떻게 확인해 볼지 말했다. 예) "분모가 서로 배수일 때는 괜찮은데 아닐 때 헷갈려", "그림으로 그려서 확인해 볼래" (O)
 [전략 답 + 평소 공부법] 평소 공부법: "${session.meta.usualMethod||''}" / 전략 질문 답: "${A.strategy||''}"
- 0 = 방법을 말하지 못함, 답을 달라고만 함, 문제를 풀어 보이기만 하고 방법은 말하지 않음
- 1 = 일반적인 방법만 말함. 예) "여러 번 읽기", "문제 많이 풀기", "열심히 하기"
- 2 = 이 내용에 맞는 구체적인 순서·방법과 그렇게 하는 이유를 말함
+ s(구체적 방법) = 이 내용에 맞는 구체적인 순서·방법을 말했다. "여러 번 읽기", "문제 많이 풀기", "열심히" 같은 일반적인 말만 있으면 X
+ r(이유) = 그 방법을 고른 이유를 말했다
+ c(조건적 지식) = 그 방법이 언제 맞는지, 또는 막히면 무엇으로 바꿀지 말했다. 예) "계산이 헷갈릴 땐 그림으로 바꿔서 볼래" (O)
 [연결 답] "${A.connect||''}"
- 0 = 연결이 없거나 개념적으로 틀림, 공부와 무관한 말
- 1 = 낱말이나 겉모습만 비슷한 연결. 예) "피자랑 비슷해"(어떤 점이 같은지 없음)
- 2 = 어떤 점이 같은지·다른지를 개념에 맞게 말로 밝힘(예: "조각 크기를 같게 맞춘다는 점이 통분과 같아"). 사례만 들고 무엇이 같은지 말하지 않으면 1
-규칙: 먼저 각 축에서 학습자가 실제로 한 말을 20자 이내로 그대로 인용한 뒤(없으면 ""), 그 인용만 근거로 수준을 정해라. 판단이 애매하면 낮은 쪽 수준을 골라라. 전략 수준은 "전략 질문 답"으로 정한다 — 평소 공부법은 참고만 하고, 평소 공부법만으로 1보다 높게 줄 수 없다. 답에 "답 알려줘"·"귀찮아"·"몰라"만 있고 방법을 말하지 않으면 0이다. 문장이 길거나 공손하다고 점수를 올리지 마라.
+ s(연결 대상) = 이 내용과 이어지는 이전 개념이나 생활 사례를 들었다
+ r(공통점 명시) = 무엇이 같은지·다른지를 말로 밝혔다. 사례만 들고 무엇이 같은지 없으면 X. 예) "조각 크기를 같게 맞춘다는 점이 통분과 같아" (O)
+ c(정확성·한계) = 그 연결이 개념적으로 정확하고, 비유가 맞지 않는 부분이나 차이까지 짚었다
+규칙: 먼저 각 축에서 학습자가 실제로 한 말을 20자 이내로 그대로 인용한 뒤(없으면 ""), 그 인용만 근거로 s·r·c를 각각 1(있다)·0(없다)로 정해라. 애매하면 0이다. 답이 "몰라"·"답 알려줘"·"귀찮아"이거나 공부와 무관하면 그 축은 모두 0이다. 전략은 "전략 질문 답"으로 판정하고, 평소 공부법만으로는 s만 줄 수 있다. 문장이 길거나 공손하다고 1을 주지 마라.
 총평(note)은 학습자에게 보여 줄 격려 한 문장이다. 이모지·학교 이름·사람 이름을 쓰지 마라.
-{"understand":{"quote":"...","level":0},"strategy":{"quote":"...","level":0},"connect":{"quote":"...","level":0},"note":"..."}`;
-  const lv = v => { const n = Math.round(+(v && typeof v==='object' ? v.level : v)); return Number.isFinite(n) ? Math.max(0,Math.min(2,n))*50 : null; };
+{"understand":{"quote":"...","s":0,"r":0,"c":0},"strategy":{"quote":"...","s":0,"r":0,"c":0},"connect":{"quote":"...","s":0,"r":0,"c":0},"note":"..."}`;
+  const bit = x => (+x >= 1 ? 1 : 0);
+  const ind = v => (v && typeof v==='object' && ['s','r','c'].some(k=>k in v)) ? { s:bit(v.s), r:bit(v.r), c:bit(v.c) } : null;
+  const pts = o => o ? Math.round((o.s+o.r+o.c)/3*100) : null;
   let ok = false;
   for(let attempt=0; attempt<2 && !ok; attempt++){
     try{
       const raw = await callLLM([
-        { role:'system', content:'너는 메타인지 지식 평가 보조자다. 반드시 순수 JSON만 출력한다. 주어진 기준점과 학습자 말 인용에만 근거한다.' },
+        { role:'system', content:'너는 메타인지 지식 평가 보조자다. 반드시 순수 JSON만 출력한다. 주어진 하위 지표 정의와 학습자 말 인용에만 근거한다.' },
         { role:'user', content: prompt }
-      ], { temperature:0 });
+      ], { temperature:0, json:true });
       const j = parseJSON(raw);
-      const d = { understand:lv(j.understand), strategy:lv(j.strategy), connect:lv(j.connect) };
-      if([d.understand,d.strategy,d.connect].some(x=>x==null)) throw new Error('shape');
+      const I = { understand:ind(j.understand), strategy:ind(j.strategy), connect:ind(j.connect) };
+      if(Object.values(I).some(x=>!x)) throw new Error('shape');
+      const d = { understand:pts(I.understand), strategy:pts(I.strategy), connect:pts(I.connect) };
+      session.meta.indicators = I; session.meta.scoreVersion = 'v2-subind';
       session.meta.scoreDetail = d;
       session.meta.scoreEvidence = { understand:(j.understand||{}).quote||'', strategy:(j.strategy||{}).quote||'', connect:(j.connect||{}).quote||'' };
       session.meta.score = Math.round((d.understand+d.strategy+d.connect)/3);
@@ -4437,7 +4489,25 @@ function sendChat(){
     return;
   }
   if(delegate){
-    ai('학습자가 답을 맡기려는 질문을 했다. 정답·풀이·계산 결과·완성된 예시를 절대 주지 마라(예시 문제의 답도 금지). 첫 단계의 단서 하나만 주거나 되물어서, 학습자가 스스로 한 걸음 해 보게 하라. 3문장 이내.', null, null, { noNewTask:true, maxLen:300 });
+    // (2026-10-01 결정: 시도 후 단계 공개 — 원리1 비계·원리2 최종판단·원리11 위임 성찰을 함께 맞춤)
+    // 예전엔 "답 알려줘"마다 같은 거절을 되풀이해, 이미 맞게 푼 학생에게도 8번 연속 거절했다.
+    // 이제 같은 과업 안에서 요청이 쌓이거나 학습자가 한 번이라도 직접 시도했으면 단계를 올린다.
+    //  1단계: 첫 걸음 단서 1개 / 2단계: 더 구체적인 힌트(빈칸 있는 풀이) / 3단계: 풀이 공개 + 자기 말로 다시 설명.
+    //  3단계로 공개한 말은 'AI에게 맡김'으로 남아 ③ 돌아보기(원리11)에서 학생이 다시 본다.
+    const ar = session.ansReq = session.ansReq || { n:0 };
+    ar.n++;
+    const tried = attemptedSinceTask(v);
+    const level = (tried || ar.n >= 3) ? 3 : ar.n;
+    const taskTxt = session.currentTask ? `지금 과업: "${session.currentTask.task}"${session.currentTask.content?` (핵심 내용: ${session.currentTask.content})`:''}` : '지금 이야기하던 문제';
+    if(level===1){
+      ai(`학습자가 답을 알려 달라고 했다(이 과업에서 처음). ${taskTxt}. 정답·풀이·계산 결과는 아직 주지 마라. 첫 단계의 단서 하나만 주고, 학습자가 그 한 걸음을 직접 해 보게 하라. "답을 알려 줄 수 없다"는 말은 하지 말고 바로 단서를 줘라. 3문장 이내.`, null, null, { noNewTask:true, maxLen:300 });
+    } else if(level===2){
+      ai(`학습자가 같은 과업에서 두 번째로 답을 달라고 했다. ${taskTxt}. 이번엔 더 구체적인 힌트를 줘라: 풀이의 앞부분을 보여 주되 마지막 한 단계(답)는 빈칸(□)으로 남겨, 학습자가 그 칸만 채우게 하라. 거절하는 말은 하지 마라. 4문장 이내.`, null, null, { noNewTask:true, maxLen:380 });
+    } else {
+      ar.n = 0;
+      ai(`${tried ? '학습자가 이미 직접 시도한 뒤' : '학습자가 같은 과업에서 여러 번'} 답을 달라고 했다. ${taskTxt}. 이제 풀이를 보여 줘라: (1) ${tried ? '학습자가 쓴 시도에서 맞은 부분을 그대로 짚어 인정하고, 틀린 곳이 있으면 어디인지' : '풀이 과정'}를 단계별로 짧게 보여 주고 정답(또는 핵심 답)과 그 이유를 말한다. (2) "이건 AI가 보여 준 풀이니까, 맞는지는 네가 판단해 봐" 정도로 한 마디 덧붙인다. (3) 마지막은 반드시 "방금 풀이를 네 말로 한 문장으로 다시 설명해 볼래?"로 끝낸다. 새 과업은 내지 마라.`, null, null, { noNewTask:true, maxLen:520 });
+      pushNote('AI가 풀이를 보여 줬어요. 이 말은 ③ 돌아보기에서 \'AI에게 맡김\'으로 다시 볼 수 있어요.');
+    }
     return;
   }
   // 나선형 순환(원리8·9): 시행(apply)→평가(check)→조정(adjust)이 매 바퀴 반복되며, 조정 단계에서
