@@ -456,7 +456,17 @@
   .tools-btn:not([hidden]){display:inline-flex}
   #math-symbols{display:none!important}
   body.tools-open #math-symbols:not([hidden]){display:flex!important}
-  #tb-details > summary{display:none}
+  #tb-details > summary{list-style:none;cursor:pointer;display:block;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface-2,#f6f7f9)}
+  #tb-details > summary::-webkit-details-marker{display:none}
+  #tb-details[open] > summary{margin-bottom:12px}
+  .tb-sum-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
+  .tb-sum-src{font-size:12px;color:var(--muted)}
+  .tb-sum-btn{margin-left:auto;font-size:12.5px;font-weight:700;color:var(--accent-ink);border:1px solid var(--accent);border-radius:999px;padding:3px 10px;background:var(--surface)}
+  #tb-details[open] .tb-sum-btn{display:none}
+  .tb-brief{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin-top:8px;font-size:12.5px;color:var(--ink-2)}
+  .tb-brief b{color:var(--ink);white-space:nowrap}
+  #st-back{white-space:nowrap}
+  .st-confirm-note{font-size:12.5px;color:var(--ink-2);margin:8px 0 0;line-height:1.55}
   .req-tag{display:inline-block;font-size:11px;font-weight:800;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:999px;padding:1px 8px;margin:0 2px;vertical-align:1px}
   .opt-tag{display:inline-block;font-size:11px;font-weight:700;color:var(--muted);background:var(--surface-2,#f3f4f6);border-radius:999px;padding:1px 8px;margin:0 2px;vertical-align:1px}
   .starters{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
@@ -804,7 +814,7 @@
   }
   /* (개선) 손가락으로 누르기 작은 버튼·체크칸(9~25px)을 넓힌다. 모양·문구는 그대로이고 누르는 영역만 키운다. */
   .st-pick-remove{min-width:28px;min-height:28px;display:inline-flex;align-items:center;justify-content:center}
-  #st-confirm,.tb-ai-toggle{width:20px;height:20px;flex:none}
+  .tb-ai-toggle{width:20px;height:20px;flex:none}
   .msg-act{padding:7px 10px;min-height:30px}
   .head-link{min-height:30px;padding-top:4px;padding-bottom:4px}
   .starters button{min-height:30px}
@@ -986,10 +996,8 @@
         <div class="chip-list" id="st-picked-list"></div>
         <!-- (개선) 원리4 지침 2·3: 성취기준의 해설(메타데이터)을 보여주고, 내가 적은 목표와 맞는지 학습자가 직접 확인한다. -->
         <div id="st-picked-concept" class="stack" style="gap:6px;margin-top:8px"></div>
-        <label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-size:13px;cursor:pointer">
-          <input type="checkbox" id="st-confirm" style="margin-top:3px" />
-          <span>위 내용이 내가 오늘 공부하고 싶은 것과 맞는지 읽어 봤어요. <span style="color:var(--muted)">(안 맞으면 ×로 빼고 다시 찾거나 직접 골라요)</span></span>
-        </label>
+        <!-- (사용성 10-05) 원리4-③ 확인: 체크박스와 시작 버튼을 따로 누르던 것을, 시작 버튼 자체를 "맞아요, 이 내용으로 시작"으로 바꿔 한 번에 확인한다. -->
+        <p class="st-confirm-note">내가 적은 것과 맞는지 읽어 보고, 맞으면 맨 아래 <b>[맞아요, 이 내용으로 시작]</b>을 눌러요. 안 맞으면 ×로 빼고 다시 찾거나 직접 골라요.</p>
       </div>
       <details id="st-manual">
         <summary style="cursor:pointer;font-size:12.5px;font-weight:700;color:var(--muted)">직접 단원을 골라 정할래요(최대 3개)</summary>
@@ -1012,8 +1020,10 @@
            (AI 의존도 연속 조절), 역할고정협업 블록은 토글(AI 호출 여부만 선택)로 구분 제시한다."
            다(가변) 5개는 슬라이더로, 가(역할고정·AI) 3개는 "AI가 바로 나설지" 토글로 바꾼다.
            나(역할고정·학습자)는 AI가 애초에 할 수 없는 일이라 호출할 대상이 없어 토글도 없다. -->
-      <details id="tb-details" open>
-        <summary class="tb-summary">AI와 할 일 나누기 <span>(그대로 두면 알맞게 정해져 있어요 — 바꾸고 싶을 때만 열어요)</span></summary>
+      <!-- (사용성 10-05) 원리5·2: 과업 블록(가·나·다)은 늘 보이게 요약해 두고, 슬라이더·토글은 [바꾸기]를 눌렀을 때 펼친다.
+           기본값·지난 설정(5-③)으로 정해져 있어 그대로 시작해도 되고, 원하면 언제든 바꿀 수 있다. -->
+      <details id="tb-details">
+        <summary class="tb-summary"><span class="tb-sum-head"><b>AI와 할 일 나누기</b> <span class="tb-sum-src" id="tb-sum-src">알맞게 정해져 있어요</span><span class="tb-sum-btn">바꾸기</span></span><span class="tb-brief" id="tb-brief"></span></summary>
         <label class="field-label" style="margin-bottom:6px">오늘 할 일, 누가 얼마나 맡을까요?</label>
         <p class="hint" style="margin:0 0 10px">아래 5가지는 <b>AI가 해도 되고 내가 해도 되는 일</b>이에요. 막대를 밀어서 AI와 내가 얼마나씩 맡을지 정해요.</p>
         <p class="hint" id="tb-recent-hint" style="margin:0 0 10px"></p>
@@ -2577,6 +2587,11 @@ function renderStart(){
     GRADES.forEach(g=>{ const o=document.createElement('option'); o.value=g; o.textContent=g; b.appendChild(o); });
     b.value = '초등학교 5학년';
   }
+  { // (사용성 10-05) 학년은 지난 공부에서 고른 값을 기억한다.
+    const a0 = account(); const last = a0 && a0.sessions.filter(x=>!x.isSample && x.ctx && x.ctx.grade).slice(-1)[0];
+    if(last && GRADES.includes(last.ctx.grade) && !b.dataset.touched) b.value = last.ctx.grade;
+  }
+  { const d = $('#tb-details'); if(d) d.open = false; }
   // 요청사항(11번째 피드백) 1: AI 힌트 크기를 미리 고르는 절차를 없앴다 — 항상 'high'로
   // 시작하고, 대화 중 이해도가 좋아지면 그때 제안→선택으로만 줄어든다(원리1, proposeFade()).
   initTaskBlocks(); applyDefaultTaskBlocks(); renderTaskBlocks();
@@ -2590,6 +2605,7 @@ function renderStart(){
     hintEl.textContent = recentN
       ? `최근 ${recentN}번의 공부에서 내가 주로 정했던 비율(평균)로 미리 맞춰뒀어요. 오늘은 다르게 하고 싶으면 얼마든지 밀어서 바꿔도 돼요.`
       : '';
+    const src = $('#tb-sum-src'); if(src) src.textContent = recentN ? `최근 ${recentN}번 내가 정한 대로예요 — 그대로 시작해도 돼요` : '알맞게 정해져 있어요 — 그대로 시작해도 돼요';
   }
 }
 // 과목은 국어·영어·수학·사회·과학 5개만 남긴다. 고1은 원본 데이터 키가
@@ -2629,8 +2645,19 @@ function tbSliderLabel(v){
   if(v>=30) return '내가 조금 더';
   return '내가 많이';
 }
+function renderTaskBrief(){
+  const el = $('#tb-brief'); if(!el || !stTaskBlocks) return;
+  const short = l => l.replace(/^(내가 |AI가 )/,'');
+  const mov = TASK_BLOCKS.filter(b=>!b.fixed);
+  const aiMore = mov.filter(b=>stTaskBlocks[b.id] >= 50).map(b=>short(b.label));
+  const meMore = mov.filter(b=>stTaskBlocks[b.id] < 50).map(b=>short(b.label));
+  const aiAlways = TASK_BLOCKS.filter(b=>b.fixed==='ai').map(b=>short(b.label) + (stFixedToggle && stFixedToggle[b.id]===false ? '(내가 먼저)' : ''));
+  const meAlways = TASK_BLOCKS.filter(b=>b.fixed==='me').map(b=>short(b.label));
+  el.innerHTML = `<b>AI가 더 맡아요</b><span>${esc([...aiMore].join(' · ')||'없음')}</span><b>내가 더 맡아요</b><span>${esc(meMore.join(' · ')||'없음')}</span><b>AI가 항상</b><span>${esc(aiAlways.join(' · '))}</span><b>내가 항상</b><span>${esc(meAlways.join(' · '))}</span>`;
+}
 function renderTaskBlocks(){
   const sliderBox = $('#tb-sliders'), toggleBox = $('#tb-toggles');
+  renderTaskBrief();
   if(!sliderBox) return;
   const movable = TASK_BLOCKS.filter(b=>!b.fixed);
   sliderBox.innerHTML = movable.map(b=>{
@@ -2658,12 +2685,10 @@ function fillStartStds(){
   syncStartGo();
 }
 function syncStartGo(){
-  const conf = $('#st-confirm');
-  const sig = stPicks.map(p=>p.code).join(',');
-  if(conf && conf.dataset.sig!==sig){ conf.checked = false; conf.dataset.sig = sig; } // 고른 내용이 바뀌면 다시 확인
-  $('#st-go').disabled = stPicks.length===0 || !(conf && conf.checked);
+  $('#st-go').disabled = stPicks.length===0;
+  $('#st-go').textContent = stPicks.length ? '맞아요, 이 내용으로 시작 →' : 'AI와 이야기 시작 →';
   const sg = $('#st-gate');
-  if(sg) sg.textContent = stPicks.length===0 ? '공부하고 싶은 것을 적고 [딱 맞는 내용 찾기]를 눌러요 (눌러서 이동)' : (!(conf && conf.checked) ? '"찾은 내용"이 내 목표와 맞는지 읽고 체크해요 (눌러서 이동)' : '');
+  if(sg) sg.textContent = stPicks.length===0 ? '공부하고 싶은 것을 적고 [딱 맞는 내용 찾기]를 눌러요 (눌러서 이동)' : '';;
   const wrap = $('#st-picked-wrap');
   const cbox = $('#st-picked-concept');
   if(cbox) cbox.innerHTML = stPicks.map(p=>`<div class="hint" style="font-size:12px;line-height:1.5"><b>${esc(p.code||'')}</b> ${esc(p.name)}${p.concept?`<br><span style="color:var(--ink-2)">해설: ${esc(trim(p.concept,160))}</span>`:''}</div>`).join('');
@@ -2733,7 +2758,7 @@ function startSession(){
   session = {
     id:uid(), startedAt:new Date().toISOString(), endedAt:null,
     // extraStds(요청사항 4): 과목을 넘나드는 공부를 위해 학생이 직접 더한 관련 성취기준(최대 2개).
-    ctx:{ grade, band:bandOf(grade), subject:subj, code:stPicks[0].code, std:stPicks[0].name, area:stPicks[0].area||'', concept:stPicks[0].concept||'',
+    ctx:{ stdConfirmedAt:new Date().toISOString(), grade, band:bandOf(grade), subject:subj, code:stPicks[0].code, std:stPicks[0].name, area:stPicks[0].area||'', concept:stPicks[0].concept||'',
       extraStds: stPicks.slice(1).map(it=>({ code:it.code, name:it.name, area:it.area||'', concept:it.concept||'', subject:SUBJECT_ALIAS[it.subjKey]||it.subjKey })) },
     // 요청사항(3·4번째 피드백) 2: "오늘 나의 목표" 입력란과 대화 중 "목표 말하기" 절차를 모두
     // 없앴다 — 시작 화면에 이미 적은 "오늘 공부하고 싶은 것"이 곧 목표이므로, 그 텍스트를 그대로
@@ -5292,8 +5317,8 @@ function init(){
     stPicks.splice(+b.dataset.i, 1); syncStartGo(); fillStartStds();
   });
   $('#st-back').addEventListener('click', ()=> show('home'));
-  $('#st-go').addEventListener('click', ()=>{ if(stPicks.length && $('#st-confirm').checked) startSession(); });
-  $('#st-confirm').addEventListener('change', syncStartGo);
+  $('#st-go').addEventListener('click', ()=>{ if(stPicks.length) startSession(); });
+  $('#st-band').addEventListener('change', e=>{ e.target.dataset.touched = '1'; });
   $('#tb-sliders').addEventListener('input', e=>{
     const s = e.target.closest('.tb-slide'); if(!s) return;
     stTaskBlocks[s.dataset.id] = +s.value;
@@ -5719,7 +5744,7 @@ function init(){
   $('#reflect-next-b').addEventListener('click', goToResidual);
 
   // (사용성) 이유 안내를 누르면 해야 할 곳으로 이동
-  $('#st-gate').addEventListener('click', ()=>{ const t = stPicks.length ? $('#st-confirm') : $('#st-topic'); if(t){ t.scrollIntoView({behavior:'smooth', block:'center'}); if(t.focus) t.focus(); } });
+  $('#st-gate').addEventListener('click', ()=>{ const t = stPicks.length ? $('#st-picked-wrap') : $('#st-topic'); if(t){ t.scrollIntoView({behavior:'smooth', block:'center'}); if(t.focus) t.focus(); } });
   $('#stream').addEventListener('click', e=>{ if(e.target.closest('.aq-gate')){ const el = [...document.querySelectorAll('.aq-a')].find(x=>!x.value.trim()) || document.querySelector('.aq-mcq'); if(el) el.scrollIntoView({behavior:'smooth', block:'center'}); } });
   $('#gs-source').addEventListener('click', ()=>{ if(session) modalHTML('AI가 참고하는 근거 자료', sourceHTML()); });
   $('#res-start').addEventListener('click', startResidual);

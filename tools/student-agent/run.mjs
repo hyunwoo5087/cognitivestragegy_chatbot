@@ -138,7 +138,7 @@ async function runOne(personaId, scenarioId) {
     await page.fill('#st-topic', S.goal);
     await page.click('#st-match-btn'); await page.waitForFunction(() => stPicks.length > 0, null, { timeout: 60000 });
     res.standards = await page.$eval('#st-picked-concept', e => e.innerText);
-    await page.check('#st-confirm'); await page.click('#st-go');
+    await page.click('#st-go');
     await page.waitForSelector('.aq-mcq, .aq-a', { timeout: 180000 }); await idle();
 
     const items = await S_(() => session.prior.items.map(it => ({ tag: it.tag, type: it.type, q: it.q, options: it.options })));
