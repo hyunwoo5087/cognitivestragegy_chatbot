@@ -86,6 +86,8 @@ function row(nick, s, status) {
     post_items: (rs.items || []).map(i => i && i.score != null ? i.score : '').join('|'),
     meta_version: (s.meta && s.meta.scoreVersion) || 'v1',
     ...metaInd(s.meta && s.meta.indicators),
+    // (10-05) 사람 채점자와 AI 채점의 일치도를 보려면 학생이 실제로 쓴 답이 필요하다.
+    meta_ans_understand: (s.meta && s.meta.answers && s.meta.answers.understand) || '', meta_ans_strategy: (s.meta && s.meta.answers && s.meta.answers.strategy) || '', meta_ans_connect: (s.meta && s.meta.answers && s.meta.answers.connect) || '',
     ans_hint1: ai.filter(t => /이 과업에서 처음/.test(t.instr || '')).length,
     ans_hint2: ai.filter(t => /두 번째로 답을 달라고/.test(t.instr || '')).length,
     ans_reveal: ai.filter(t => /\[풀이 공개 턴\]/.test(t.instr || '')).length,

@@ -434,6 +434,10 @@
   .sess-item .note .inc-tag{display:block;white-space:nowrap}
   .sess-item .note .inc-sub{display:block;font-size:11.5px;color:var(--accent-ink);font-weight:700;margin-top:2px;white-space:nowrap}
   .inc-box .inc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .msi-chips{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 2px}
+  .msi{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--surface-2,#f1f3f5);color:var(--muted)}
+  .msi.on{background:#e7f6ee;color:#0b6b3d;font-weight:700}
+  .msi-said{font-size:11.5px;color:var(--ink-2);margin:0 0 8px;line-height:1.5}
   .gp-note{font-size:11.5px;color:var(--muted);margin:8px 0 0}
   .chart-box{position:relative;width:100%;height:240px;margin-bottom:12px}
   .chart-box.sm{height:200px}
@@ -697,6 +701,15 @@
   .pb-step:not(.active) .pb-label small{display:none}
   .pb-step.active{flex:2.4}
   .pb-label small{font-size:11.5px;color:var(--ink-2)}
+  .process-bar{flex-direction:column;align-items:stretch}
+  .pb-main{display:flex;align-items:center;width:100%}
+  .pb-sub{display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;margin-top:10px;padding-top:9px;border-top:1px dashed var(--line);font-size:12px}
+  .pb-count{font-weight:800;color:var(--accent-ink);background:var(--accent-wash);border-radius:999px;padding:2px 9px;margin-right:4px;white-space:nowrap}
+  .pb-s{color:var(--muted);white-space:nowrap}
+  .pb-s.done{color:var(--ink-2)}
+  .pb-s.now{color:var(--ink);font-weight:800;border-bottom:2px solid var(--accent);white-space:normal}
+  .pb-arrow{color:var(--line-strong)}
+  @media(max-width:700px){ .pb-s:not(.now){display:none} .pb-arrow{display:none} }
   .pb-line{background:var(--line-strong)}
   .pb-line.done{background:var(--accent)}
 
@@ -2084,6 +2097,13 @@ const PROMPT_DIM_COLORS = { specificity:'#8b5cf6', logic:'#12a05f', clarity:'#f5
 const SUBJECT_LINE_COLORS = ['#8b5cf6','#12a05f','#f59e0b','#0891b2','#dc2626','#4338ca','#be185d'];
 let homeAnalysisText = null; // 요청사항(7번째 피드백) 4: 버튼을 눌렀을 때만 채워지고, 다시 그려도 유지된다.
 let ppSubj = ''; // 공부 전·후 그래프에서 고른 과목('' = 모든 과목)
+// (10-05) 메타 점수는 10-01에 채점 기준이 바뀌었다(구: 0/50/100 한 번에 판정 → 신: 하위 지표 3개 합산 0/33/67/100).
+// 두 기준을 한 선에 이으면 기준이 바뀐 것이 "점수가 내려간 것"처럼 보이므로, 새 기준 기록이 있으면 새 기준만 그린다.
+function metaSessionsForTrend(S){
+  const all = S.filter(s => s.meta && s.meta.scoreDetail);
+  const v2 = all.filter(s => s.meta.scoreVersion === 'v2-subind');
+  return { list: v2.length ? v2 : all, excluded: v2.length ? all.length - v2.length : 0 };
+}
 function renderHome(){
   const acc = account(); if(!acc) return show('auth');
   // (개선) 예시 데이터 버튼은 시연용이라 학생 화면에서는 숨긴다. 주소 끝에 ?demo 를 붙이면 보인다.
@@ -2224,7 +2244,7 @@ function renderHome(){
   // 3개 선을 따로 그려야 한다" — 원리3 [메인 대시보드 설계 지침] 4.
   const metaCanvas = $('#agg-meta-chart');
   if(aggMetaChart){ aggMetaChart.destroy(); aggMetaChart=null; }
-  const metaScored = S.filter(s=>s.meta && s.meta.scoreDetail);
+  const metaScored = metaSessionsForTrend(S).list;
   if(metaScored.length){
     metaCanvas.hidden = false;
     // (그래프 점검 10-05) 점수가 같으면 선이 겹쳐 하나가 사라져 보였다 → 굵기·점 모양·점선을 달리해 겹쳐도 셋 다 보이게.
@@ -2407,7 +2427,7 @@ function renderGrowth(S, sc, topStrat){
     const grid = $('#agg-prompt-wrap'); if(grid) grid.style.gridTemplateColumns = nSess >= 2 ? '' : 'minmax(0,1fr)';
     const pe = $('#gp-empty-prompt-line'); if(pe) pe.hidden = nSess !== 1; }
   // 스스로 점검
-  const ms = S.filter(s => s.meta && s.meta.scoreDetail);
+  const { list: ms, excluded: msExcluded } = metaSessionsForTrend(S);
   if(ms.length){
     const L = ms[ms.length-1].meta.scoreDetail, F = ms[0].meta.scoreDetail;
     const names = { understand:'이해 질문', strategy:'전략 질문', connect:'연결 질문' };
@@ -2428,7 +2448,17 @@ function renderGrowth(S, sc, topStrat){
     if(ms.length){
       const L = ms[ms.length-1].meta.scoreDetail;
       const rows = [['이해 질문','헷갈리는 곳을 이유와 함께 짚었나', L.understand],['전략 질문','이 내용에 맞는 방법과 이유를 말했나', L.strategy],['연결 질문','배운 것·생활과 개념에 맞게 연결했나', L.connect]];
-      lastBox.innerHTML = `<div class="gp-sub">가장 최근 공부(${ms.length}번째)</div>` + rows.map(r=>`<div class="msc-row" title="${esc(r[1])}"><span>${r[0]} <small style="color:var(--muted)">${esc(r[1])}</small></span><span class="bar"><i style="width:${r[2]}%"></i></span><b>${r[2]}점</b></div>`).join('');
+      // (10-05) 왜 이 점수인지 보이게: 하위 지표(구체적·이유·조건) 충족 여부와 AI가 근거로 인용한 내 말을 함께 보여 준다(원리10: 판정을 학습자가 검토).
+      const lastS = ms[ms.length-1], I = lastS.meta.indicators || null, EV = lastS.meta.scoreEvidence || {};
+      const keys = ['understand','strategy','connect'];
+      const IND_LAB = { understand:['구체적인 곳','이유','언제·어떻게 확인'], strategy:['구체적인 방법','이유','언제 쓰고 막히면'], connect:['연결 대상','같은 점·다른 점','정확함·한계'] };
+      const ansOf = k => ((lastS.meta.answers||{})[k] || '').trim();
+      lastBox.innerHTML = `<div class="gp-sub">가장 최근 공부(${ms.length}번째)</div>` + rows.map((r,i)=>{
+        const k = keys[i];
+        const chips = I && I[k] ? `<div class="msi-chips">${['s','r','c'].map((x,j)=>`<span class="msi ${I[k][x]?'on':''}">${I[k][x]?'✓':'·'} ${IND_LAB[k][j]}</span>`).join('')}</div>` : '';
+        const said = ansOf(k) ? `<div class="msi-said">내 답: "${esc(trim(ansOf(k),70))}"${EV[k] ? '' : ''}</div>` : (I ? `<div class="msi-said">이 질문에 남긴 답이 없어요</div>` : '');
+        return `<div class="msc-row" title="${esc(r[1])}"><span>${r[0]} <small style="color:var(--muted)">${esc(r[1])}</small></span><span class="bar"><i style="width:${r[2]}%"></i></span><b>${r[2]}점</b></div>${chips}${said}`;
+      }).join('') + (msExcluded ? `<p class="gp-note">10월 1일 전에 한 ${msExcluded}번은 점수 매기는 방법이 지금과 달라서 아래 그래프에서 뺐어요.</p>` : '');
       lastBox.hidden = false;
     } else { lastBox.innerHTML = ''; lastBox.hidden = true; }
   }
@@ -3209,11 +3239,23 @@ function paintProcessBar(){
     { t:'해 보기', d: stage===1 ? cycleNowText() : '고른 방법대로 해 보고 점검하기', why:'해 보고, AI 의견을 내가 판단해요' },
     { t:'돌아보기', d: stage===2 ? backDesc : '어떻게 배웠는지 돌아보기', why:'AI 없이 얼마나 남았는지 확인해요' }
   ];
-  bar.innerHTML = steps.map((s,i)=>{
+  // (사용성 10-05) "지금 어디인지"가 잘 안 보였다 → 지금 단계 안의 작은 순서를 한 줄로 보여 주고, 몇 번째인지 표시한다.
+  let subs = null, si = 0;
+  if(stage===0){
+    subs = ['배울 것 정하기','아는 것 확인하기','스스로 점검하기','공부 방법 고르기'];
+    si = scr==='start' || !session ? 0 : session.phase==='prep' && session.prepStep==='meta' ? 2 : session.phase==='prep' ? 1 : 3;
+  } else if(stage===2){
+    subs = ['누가 이끌었나 돌아보기','내 질문 돌아보기','혼자 풀어보기','마지막 글 쓰기'];
+    si = scr==='residual' ? ((session && session.residual && session.residual.result) ? 3 : 2) : (session && session.reflect && session.reflect.step==='prompt') ? 1 : 0;
+  }
+  const subHtml = subs
+    ? `<div class="pb-sub" aria-label="${esc(steps[stage].t)} ${si+1}/${subs.length}단계: ${esc(subs[si])}"><span class="pb-count">${steps[stage].t} ${si+1}/${subs.length}</span>${subs.map((t,i)=>`<span class="pb-s ${i<si?'done':i===si?'now':''}">${i<si?'✓ ':''}${esc(t)}</span>`).join('<span class="pb-arrow" aria-hidden="true">›</span>')}</div>`
+    : `<div class="pb-sub"><span class="pb-count">해 보기</span><span class="pb-s now">${esc(cycleNowText())}</span><span class="pb-s">다 해 보면 [이야기 끝내기] → 돌아보기</span></div>`;
+  bar.innerHTML = `<div class="pb-main">` + steps.map((s,i)=>{
     const cls = i<stage ? 'done' : i===stage ? 'active' : '';
     const line = i<steps.length-1 ? `<span class="pb-line ${i<stage?'done':''}"></span>` : '';
-    return `<div class="pb-step ${cls}"><span class="pb-dot">${i<stage?'✓':i+1}</span><span class="pb-label"><b>${s.t}</b><small>${esc(i===stage ? s.d + ' — ' + s.why : s.d)}</small></span></div>${line}`;
-  }).join('');
+    return `<div class="pb-step ${cls}"${i===stage?' aria-current="step"':''}><span class="pb-dot">${i<stage?'✓':i+1}</span><span class="pb-label"><b>${s.t}</b><small>${esc(i===stage ? s.why : s.d)}</small></span></div>${line}`;
+  }).join('') + `</div>` + subHtml;
 }
 function pushNote(text){ session.turns.push({ id:uid(), role:'note', text }); renderStream(); }
 function pushMetaScoreCard(){
@@ -5142,6 +5184,7 @@ async function submitResidual(){
 }
 function renderResidualResult(){
   const ev = session.residual.result; if(!ev) return;
+  paintProcessBar();
   const pre = session.prior.diagScore, post = session.residual.postScore;
   const preTxt = pre!=null ? pre+'점' : '측정 안 됨', postTxt = post!=null ? post+'점' : '측정 안 됨';
   const deltaKind = (pre!=null && post!=null) ? (post>pre?'up':(post<pre?'down':'flat')) : 'na';
