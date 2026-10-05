@@ -410,6 +410,28 @@
   .gp-sum:empty{display:none}
   .gp-empty{padding:18px;text-align:center;color:var(--muted);font-size:13px;border:1px dashed var(--line-strong);border-radius:10px;margin-bottom:12px}
   .gp-sub{font-size:13px;margin:16px 0 6px;color:var(--ink-2)}
+  /* (그래프 점검 10-05) 공부 방법 막대: 변화 표시 유무와 상관없이 막대 길이(트랙)를 같은 칸에 맞추고, 휴대폰에선 변화 표시를 막대 아래 줄로 */
+  #agg-strategy .strat-row{display:grid;grid-template-columns:24px 124px minmax(0,1fr) 22px 128px;gap:10px;align-items:center}
+  #agg-strategy .strat-row .lab,#agg-strategy .strat-row .num{width:auto}
+  #agg-strategy .eff{justify-self:start;font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap;background:#e7f6ee;color:#0b6b3d}
+  #agg-strategy .eff.neg{background:var(--surface-2,#f1f3f5);color:var(--ink-2)}
+  #agg-strategy .eff.none{background:none;color:var(--muted);font-weight:500;padding:2px 0}
+  .gp-note{font-size:11.5px;color:var(--muted);margin:8px 0 0}
+  .chart-box{position:relative;width:100%;height:240px;margin-bottom:12px}
+  .chart-box.sm{height:200px}
+  .subj-filter{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
+  .subj-filter button{font-size:12px;padding:4px 10px;min-height:30px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);cursor:pointer}
+  .subj-filter button.on{background:var(--accent-wash);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+  @media(max-width:620px){
+    #agg-strategy .strat-row{grid-template-columns:22px minmax(0,1fr) 22px;row-gap:4px;column-gap:8px}
+    #agg-strategy .strat-row .track{grid-column:2/3;grid-row:2}
+    #agg-strategy .strat-row .num{grid-column:3;grid-row:1/3}
+    #agg-strategy .strat-row .eff{grid-column:2/3;grid-row:3}
+    #agg-strategy .strat-row .lab{white-space:normal}
+    .growth-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+    .growth-tabs .gt{padding:7px 2px;font-size:12.5px}
+    .chart-box{height:210px} .chart-box.sm{height:180px}
+  }
   @media(max-width:620px){.stat-row-3{grid-template-columns:repeat(3,1fr)} .stat-row-3 .stat-tile .num{font-size:20px}}
   /* ===== 공통 화면 정리 — 설계원리가 정한 요소는 모두 그대로 보이고, 원리와 무관한 보조 도구(수식 기호)만 접어 둔다 ===== */
   .tools-btn{display:none;height:30px;font-size:12px;align-self:flex-start;margin-right:6px}
@@ -868,18 +890,20 @@
         <button type="button" class="gt" role="tab" aria-selected="false" data-tab="meta">스스로 점검</button>
       </div>
       <div class="gp" data-panel="strategy">
-        <p class="gp-read">읽는 법: 막대가 길수록 그 방법을 자주 썼어요. 초록 표시는 그 방법을 쓴 공부에서 점수가 평균 얼마나 달라졌는지예요.</p>
+        <p class="gp-read">읽는 법: 막대가 길수록 그 방법을 자주 썼어요. 오른쪽 초록 표시는 그 방법을 쓴 공부에서 "공부 전 → 혼자 풀 때" 점수가 평균 얼마나 달라졌는지예요.</p>
         <p class="gp-sum" id="gs-sum-strategy"></p>
         <div id="agg-strategy"></div>
+        <p class="gp-note" id="gs-note-strategy" hidden>한두 번뿐인 기록은 우연일 수 있어요. 여러 번 써 볼수록 어떤 방법이 나에게 맞는지 더 잘 보여요.</p>
       </div>
       <div class="gp" data-panel="prepost" hidden>
         <p class="gp-read">읽는 법: 공부 전 "아는 것 확인" 점수와, AI 없이 "혼자 풀어보기" 점수를 비교해요. 같은 종류의 문제라서 차이가 곧 늘어난 만큼이에요.</p>
         <p class="gp-sum" id="gs-sum-prepost"></p>
         <div class="gp-empty" id="gp-empty-prepost" hidden>공부를 2번 이상 끝내면 흐름 그래프가 생겨요.</div>
-        <canvas id="agg-residual-chart" height="130" style="margin-bottom:12px"></canvas>
+        <div class="subj-filter" id="pp-subj" role="group" aria-label="과목 고르기" hidden></div>
+        <div class="chart-box" id="box-residual"><canvas id="agg-residual-chart" role="img" aria-label="공부 회차별 공부 전 점수와 혼자 풀 때 점수"></canvas></div>
         <div class="stack" id="agg-residual" style="gap:14px"></div>
         <h5 class="gp-sub">과목별로 평균 얼마나 늘었나</h5>
-        <canvas id="agg-subject-delta-chart" height="120"></canvas>
+        <div class="chart-box sm" id="box-subject-delta"><canvas id="agg-subject-delta-chart" role="img" aria-label="과목별 평균 향상 점수"></canvas></div>
         <div id="agg-subject" hidden></div>
       </div>
       <div class="gp" data-panel="prompt" hidden>
@@ -889,6 +913,7 @@
           <div class="prompt-chart-col"><canvas id="agg-prompt-bar-chart"></canvas></div>
           <div class="prompt-chart-col"><canvas id="agg-prompt-line-chart"></canvas></div>
         </div>
+        <div class="gp-empty" id="gp-empty-prompt-line" hidden>되짚기를 2번 이상 하면 회차별 흐름 그래프도 생겨요.</div>
         <div id="agg-prompt-empty" hidden></div>
       </div>
       <div class="gp" data-panel="meta" hidden>
@@ -896,7 +921,7 @@
         <p class="gp-sum" id="gs-sum-meta"></p>
         <div id="gp-meta-last" class="stack" style="gap:4px;margin-bottom:10px" hidden></div>
         <div class="gp-empty" id="gp-empty-meta" hidden>공부를 2번 이상 끝내면 흐름 그래프가 생겨요.</div>
-        <canvas id="agg-meta-chart" height="140"></canvas>
+        <div class="chart-box" id="box-meta"><canvas id="agg-meta-chart" role="img" aria-label="공부 회차별 이해·전략·연결 질문 점수"></canvas></div>
       </div>
     </div>
 
@@ -2025,8 +2050,10 @@ let aggSubjectDeltaChart = null;
 let aggMetaChart = null;
 let aggPromptBarChart = null;
 let aggPromptLineChart = null;
+const PROMPT_DIM_COLORS = { specificity:'#8b5cf6', logic:'#12a05f', clarity:'#f59e0b' };
 const SUBJECT_LINE_COLORS = ['#8b5cf6','#12a05f','#f59e0b','#0891b2','#dc2626','#4338ca','#be185d'];
 let homeAnalysisText = null; // 요청사항(7번째 피드백) 4: 버튼을 눌렀을 때만 채워지고, 다시 그려도 유지된다.
+let ppSubj = ''; // 공부 전·후 그래프에서 고른 과목('' = 모든 과목)
 function renderHome(){
   const acc = account(); if(!acc) return show('auth');
   // (개선) 예시 데이터 버튼은 시연용이라 학생 화면에서는 숨긴다. 주소 끝에 ?demo 를 붙이면 보인다.
@@ -2073,10 +2100,13 @@ function renderHome(){
   $('#agg-strategy').innerHTML = Object.keys(sc).length
     ? STRATS.map(st=>{
         const n = sc[st.id]||0;
-        const isTop = st.id===topId && n>0;
+        const isTop = st.id===topId && n>0 && Object.values(sc).filter(v=>v===sc[topId]).length===1; // 공동 1위면 강조하지 않는다
         const effRec = effByStrat[st.id];
         const eff = effRec && effRec.w ? Math.round(effRec.sum/effRec.w) : null;
-        return `<div class="strat-row${isTop?' top':''}"><span class="emoji">${st.emoji}</span><span class="lab">${st.label}</span><span class="track"><i style="width:${n/scMax*100}%"></i></span><span class="num">${n}</span>${eff!=null?`<span class="pill" style="margin-left:6px;background:var(--accent-wash);color:var(--accent-ink)" title="이 방법을 쓴 공부에서 사전→사후 평균 변화(${effRec.n}회)">변화 ${eff>=0?'+':''}${eff}점 · ${effRec.n}회</span>`:''}${isTop?'<span class="crown"></span>':''}</div>`;
+        const effHtml = eff!=null
+          ? `<span class="eff${eff<0?' neg':''}" title="이 방법을 쓴 공부에서 공부 전→혼자 풀 때 평균 변화(${effRec.n}번 공부)">${eff>0?'+':eff<0?'−':'±'}${Math.abs(eff)}점 · ${effRec.n}번</span>`
+          : `<span class="eff none">${n?'혼자 풀기 기록 없음':''}</span>`;
+        return `<div class="strat-row${isTop?' top':''}"><span class="emoji" aria-hidden="true">${st.emoji}</span><span class="lab">${st.label}</span><span class="track" aria-hidden="true"><i style="width:${n/scMax*100}%"></i></span><span class="num" aria-label="${n}번">${n}</span>${effHtml}</div>`;
       }).join('')
     : emptyState('', '아직 골라본 방법이 없어요.<br>첫 공부에서 골라볼까요?');
 
@@ -2112,25 +2142,31 @@ function renderHome(){
   // 사전 진단·혼자 풀어보기 점수를 나란히 그려서 늘어나는 흐름을 한눈에 보이게 한다.
   const chartCanvas = $('#agg-residual-chart');
   if(aggResidualChart){ aggResidualChart.destroy(); aggResidualChart=null; }
-  if(withResidual.length){
+  // (그래프 점검 10-05) 예전엔 과목마다 '혼자 풀 때' 선을 따로 그려서, 과목이 섞이면 선 없이 점만 흩어지고
+  // 회색 선(회차별 사전 점수)이 '전체 평균'으로 잘못 적혀 있었다. 이제 같은 회차의 '공부 전'과 '혼자 풀 때'를
+  // 두 선으로 나란히 그리고, 과목 단추로 한 과목만 골라 보면 그 과목의 꺾은선(원리3 지침2: 과목 별 시간의 변화)이 된다.
+  const subjAll = [...new Set(withResidual.map(s=>s.ctx.subject).filter(Boolean))];
+  if(ppSubj && !subjAll.includes(ppSubj)) ppSubj = '';
+  const ppBox = $('#pp-subj');
+  if(ppBox){
+    ppBox.hidden = withResidual.length < 2 || subjAll.length < 2;
+    ppBox.innerHTML = ['', ...subjAll].map(k=>`<button type="button" data-subj="${esc(k)}" class="${k===ppSubj?'on':''}" aria-pressed="${k===ppSubj}">${k?`${SUBJECT_EMOJI[k]||''} ${esc(k)}`:'모든 과목'}</button>`).join('');
+    ppBox.onclick = e => { const b = e.target.closest('button'); if(!b) return; ppSubj = b.dataset.subj; renderHome(); showGrowthTab('prepost'); };
+  }
+  const ppRows = withResidual.filter(s => !ppSubj || s.ctx.subject===ppSubj);
+  if(ppRows.length){
     chartCanvas.hidden = false;
-    // 원리3 [메인 대시보드 설계 지침] 2: "과목 별 꺾은선 그래프(시간의 변화)"로도 보여준다 —
-    // 전체 평균(사전 진단) 1개 선 위에, 과목마다 "혼자 풀 때" 점수를 다른 색 선으로 얹는다.
-    const subjSet = [...new Set(withResidual.map(s=>s.ctx.subject).filter(Boolean))];
-    const subjDatasets = subjSet.map((subj,i)=>({
-      label: `${SUBJECT_EMOJI[subj]||''} ${subj} (혼자 풀 때)`,
-      data: withResidual.map(s=> s.ctx.subject===subj ? s.residual.postScore : null),
-      borderColor: SUBJECT_LINE_COLORS[i%SUBJECT_LINE_COLORS.length],
-      backgroundColor: SUBJECT_LINE_COLORS[i%SUBJECT_LINE_COLORS.length]+'22',
-      spanGaps:true, tension:.3
-    }));
+    const lineCol = ppSubj ? SUBJECT_LINE_COLORS[Math.max(0, subjAll.indexOf(ppSubj)) % SUBJECT_LINE_COLORS.length] : '#3182f6';
     aggResidualChart = new Chart(chartCanvas, {
       type:'line',
-      data:{ labels: withResidual.map((s,i)=>`${i+1}회`), datasets:[
-        { label:'공부 전(사전 진단, 전체 평균)', data: withResidual.map(s=>s.prior.diagScore), borderColor:'#94a3b8', backgroundColor:'#94a3b822', borderDash:[4,3], tension:.3 },
-        ...subjDatasets
+      data:{ labels: ppRows.map((s,i)=> ppSubj ? `${i+1}번째` : [`${i+1}회`, `${SUBJECT_EMOJI[s.ctx.subject]||''}${s.ctx.subject||''}`]), datasets:[
+        { label:'공부 전 (아는 것 확인)', data: ppRows.map(s=>s.prior.diagScore), borderColor:'#94a3b8', backgroundColor:'#94a3b8', borderDash:[5,4], pointRadius:4, tension:.25, clip:false },
+        { label:'혼자 풀 때', data: ppRows.map(s=>s.residual.postScore), borderColor:lineCol, backgroundColor:lineCol, borderWidth:3, pointRadius:5, tension:.25, clip:false }
       ] },
-      options:{ scales:{ y:{ min:0, max:100 } }, plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:10 } } } }
+      options:{ responsive:true, maintainAspectRatio:false, interaction:{ mode:'index', intersect:false },
+        scales:{ y:{ min:0, max:100, ticks:{ stepSize:25, font:{size:11} }, title:{ display:true, text:'점수', font:{size:11} } }, x:{ ticks:{ font:{size:11} } } },
+        plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:12 } },
+          tooltip:{ callbacks:{ title: it => { const s = ppRows[it[0].dataIndex]; return `${s.startedAt.slice(0,10)} · ${s.ctx.subject||''}`; }, label: c => ` ${c.dataset.label}: ${c.parsed.y}점`, footer: it => { const s = ppRows[it[0].dataIndex]; const d = s.residual.postScore - s.prior.diagScore; return `변화 ${d>0?'+':''}${d}점`; } } } } }
     });
   } else { chartCanvas.hidden = true; }
   // 원리3 [메인 대시보드 설계 지침] 2: "대화 전 후의 변화도 평균"을 막대그래프로 과목별로.
@@ -2144,8 +2180,13 @@ function renderHome(){
     const avgDeltas = deltaSubjKeys.map(k=>Math.round(bySubjDelta[k].reduce((a,b)=>a+b,0)/bySubjDelta[k].length));
     aggSubjectDeltaChart = new Chart(deltaCanvas, {
       type:'bar',
-      data:{ labels: deltaSubjKeys.map(k=>`${SUBJECT_EMOJI[k]||''} ${k}`), datasets:[{ label:'평균 향상 점수', data:avgDeltas, backgroundColor: avgDeltas.map(v=>v>=0?'#12a05f':'#dc2626'), borderRadius:6 }] },
-      options:{ plugins:{ legend:{ display:false } } }
+      data:{ labels: deltaSubjKeys.map(k=>`${SUBJECT_EMOJI[k]||''} ${k} (${bySubjDelta[k].length}번)`), datasets:[{ label:'평균 변화', data:avgDeltas, backgroundColor: avgDeltas.map(v=>v>=0?'#12a05f':'#94a3b8'), borderRadius:6, maxBarThickness:56 }] },
+      // (그래프 점검 10-05) 0에서 시작하는 축·위쪽 여유·막대 위 숫자·축 이름. 과목이 하나여도 막대가 화면을 다 채우지 않게 굵기 제한.
+      options:{ responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:18 } },
+        scales:{ y:{ beginAtZero:true, suggestedMax: Math.max(10, ...avgDeltas)+5, suggestedMin: Math.min(...avgDeltas) < 0 ? Math.min(...avgDeltas)-5 : 0, ticks:{ font:{size:11} }, title:{ display:true, text:'점수 변화(점)', font:{size:11} } }, x:{ ticks:{ font:{size:11} } } },
+        plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: c => ` 평균 ${c.parsed.y>0?'+':''}${c.parsed.y}점` } } } },
+      plugins:[{ id:'barValue', afterDatasetsDraw(ch){ const {ctx} = ch; const m = ch.getDatasetMeta(0); ctx.save(); ctx.font = '700 12px Pretendard, system-ui, sans-serif'; ctx.fillStyle = '#334155'; ctx.textAlign = 'center';
+        m.data.forEach((bar,i)=>{ const v = avgDeltas[i]; ctx.textBaseline = v>=0 ? 'bottom' : 'top'; ctx.fillText(`${v>0?'+':''}${v}점`, bar.x, v>=0 ? bar.y-4 : bar.y+4); }); ctx.restore(); } }]
     });
   } else { deltaCanvas.hidden = true; }
   // 요청사항(9번째 피드백) 1: "메타인지 지식 지표는 이해질문·전략질문·연결질문 3가지 유형별로
@@ -2156,13 +2197,16 @@ function renderHome(){
   const metaScored = S.filter(s=>s.meta && s.meta.scoreDetail);
   if(metaScored.length){
     metaCanvas.hidden = false;
-    const META_DIMS = [ {k:'understand', label:'이해 질문', color:'#3182f6'}, {k:'strategy', label:'전략 질문', color:'#f59e0b'}, {k:'connect', label:'연결 질문', color:'#12a05f'} ];
+    // (그래프 점검 10-05) 점수가 같으면 선이 겹쳐 하나가 사라져 보였다 → 굵기·점 모양·점선을 달리해 겹쳐도 셋 다 보이게.
+    const META_DIMS = [ {k:'understand', label:'이해 질문', color:'#3182f6', w:5, dash:[], ps:'circle', pr:5}, {k:'strategy', label:'전략 질문', color:'#f59e0b', w:3, dash:[6,4], ps:'rect', pr:4}, {k:'connect', label:'연결 질문', color:'#12a05f', w:2, dash:[2,3], ps:'triangle', pr:4} ];
     aggMetaChart = new Chart(metaCanvas, {
       type:'line',
       data:{ labels: metaScored.map((s,i)=>`${i+1}회`), datasets: META_DIMS.map(d=>({
-        label: d.label, data: metaScored.map(s=>s.meta.scoreDetail[d.k]), borderColor:d.color, backgroundColor:d.color+'22', tension:.3
+        label: d.label, data: metaScored.map(s=>s.meta.scoreDetail[d.k]), borderColor:d.color, backgroundColor:d.color, borderWidth:d.w, borderDash:d.dash, pointStyle:d.ps, pointRadius:d.pr, order:d.w, tension:.25, clip:false
       })) },
-      options:{ scales:{ y:{ min:0, max:100 } }, plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:10 } } } }
+      options:{ responsive:true, maintainAspectRatio:false, interaction:{ mode:'index', intersect:false },
+        scales:{ y:{ min:0, max:100, ticks:{ stepSize:25, font:{size:11} }, title:{ display:true, text:'점수', font:{size:11} } }, x:{ ticks:{ font:{size:11} } } },
+        plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:12, usePointStyle:true, sort:(a,b)=>a.datasetIndex-b.datasetIndex } }, tooltip:{ callbacks:{ title: it => `${it[0].dataIndex+1}회 · ${(metaScored[it[0].dataIndex].startedAt||'').slice(0,10)}`, label: c => ` ${c.dataset.label}: ${c.parsed.y}점` } } } }
     });
   } else { metaCanvas.hidden = true; }
   // 원리3 [메인 대시보드 설계 지침] 3 · 원리12: 프롬프트 구체성·논리성·명시성(되짚기 나 단계에서
@@ -2190,7 +2234,7 @@ function renderHome(){
     const avgs = PROMPT_RATE_DIMS.map(d=> promptRatingsFlat.reduce((a,r)=>a+r[d.k],0)/promptRatingsFlat.length);
     aggPromptBarChart = new Chart(promptBarCanvas, {
       type:'bar',
-      data:{ labels: PROMPT_RATE_DIMS.map(d=>d.label), datasets:[{ label:'평균(1~5)', data:avgs, backgroundColor:'#8b5cf6', borderRadius:6 }] },
+      data:{ labels: PROMPT_RATE_DIMS.map(d=>d.label), datasets:[{ label:'평균(1~5)', data:avgs, backgroundColor: PROMPT_RATE_DIMS.map(d=>PROMPT_DIM_COLORS[d.k]||'#8b5cf6'), borderRadius:6, maxBarThickness:48 }] },
       options:{
         responsive: true,
         maintainAspectRatio: false,
@@ -2201,18 +2245,19 @@ function renderHome(){
         plugins:{ legend:{ display:false } }
       }
     });
-    const dimColors = { specificity:'#8b5cf6', logic:'#12a05f', clarity:'#f59e0b' };
+    // (그래프 점검 10-05) 막대와 꺾은선의 색을 같은 기준(지표별)으로 맞추고, 값이 같아 선이 겹쳐도 셋 다 보이게 굵기·점 모양을 달리한다.
+    const LSTY = { specificity:{w:5,ps:'circle',pr:5,dash:[]}, logic:{w:3,ps:'rect',pr:4,dash:[6,4]}, clarity:{w:2,ps:'triangle',pr:4,dash:[2,3]} };
     aggPromptLineChart = new Chart(promptLineCanvas, {
       type:'line',
-      data:{ labels: promptSessAvg.map((s,i)=>`${i+1}회`), datasets: PROMPT_RATE_DIMS.map(d=>({ label:d.label, data: promptSessAvg.map(s=>s[d.k]), borderColor:dimColors[d.k], backgroundColor:dimColors[d.k]+'22', tension:.3 })) },
+      data:{ labels: promptSessAvg.map((s,i)=>`${i+1}회`), datasets: PROMPT_RATE_DIMS.map(d=>({ label:d.label, data: promptSessAvg.map(s=>Math.round(s[d.k]*10)/10), borderColor:PROMPT_DIM_COLORS[d.k], backgroundColor:PROMPT_DIM_COLORS[d.k], borderWidth:(LSTY[d.k]||{}).w||2, borderDash:(LSTY[d.k]||{}).dash||[], pointStyle:(LSTY[d.k]||{}).ps||'circle', pointRadius:(LSTY[d.k]||{}).pr||4, order:(LSTY[d.k]||{}).w||2, tension:.25, clip:false })) },
       options:{
         responsive: true,
         maintainAspectRatio: false,
         scales:{
-          y:{ min:0, max:5, ticks:{ stepSize:1, font:{size:11} } },
+          y:{ min:1, max:5, ticks:{ stepSize:1, font:{size:11} } },
           x:{ ticks:{ font:{size:11} } }
         },
-        plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:10 } } }
+        plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:12, usePointStyle:true, sort:(a,b)=>a.datasetIndex-b.datasetIndex } } }
       }
     });
   } else {
@@ -2292,32 +2337,53 @@ async function runHomeAnalysis(){
 function renderGrowth(S, sc, topStrat){
   // 공부 방법
   const used = Object.entries(sc||{}).sort((a,b)=>b[1]-a[1]);
-  $('#gs-sum-strategy').textContent = used.length
-    ? `가장 많이 쓴 방법은 ${topStrat ? topStrat.label : '-'}(${used[0][1]}번)이에요.` + (used.length < STRATS.length ? ` 아직 안 써 본 방법도 ${STRATS.length - used.length}가지 있어요.` : ' 다섯 가지 방법을 모두 써 봤어요!')
-    : '';
+  // (그래프 점검 10-05) 공동 1위일 때 하나만 골라 "가장 많이 쓴 방법"이라고 하던 것을 바로잡는다.
+  const tops = used.filter(u => u[1] === (used[0]||[])[1]).map(u => (STRATS.find(x=>x.id===u[0])||{}).label).filter(Boolean);
+  const rest = used.length < STRATS.length ? ` 아직 안 써 본 방법도 ${STRATS.length - used.length}가지 있어요.` : ' 다섯 가지 방법을 모두 써 봤어요!';
+  $('#gs-sum-strategy').textContent = !used.length ? ''
+    : tops.length === 1 ? `가장 많이 쓴 방법은 ${tops[0]}(${used[0][1]}번)이에요.` + rest
+    : tops.length === used.length ? (used.length === STRATS.length ? `다섯 가지 방법을 모두 ${used[0][1]}번씩 고르게 써 봤어요!` : `지금까지 ${used.length}가지 방법을 ${used[0][1]}번씩 고르게 써 봤어요.` + rest)
+    : `가장 많이 쓴 방법은 ${tops.join('·')}(각 ${used[0][1]}번)이에요.` + rest;
+  { const note = $('#gs-note-strategy'); if(note) note.hidden = !used.length || S.filter(s => s.prior && s.prior.diagScore!=null && s.residual && s.residual.postScore!=null).length >= 3; }
   // 공부 전·후
   const withRes = S.filter(s => s.prior && s.prior.diagScore!=null && s.residual && s.residual.postScore!=null);
   const last = withRes[withRes.length-1];
   $('#gs-sum-prepost').textContent = last ? `지난번 공부: 공부 전 ${last.prior.diagScore}점 → 혼자 풀 때 ${last.residual.postScore}점 (${last.residual.postScore - last.prior.diagScore >= 0 ? '+' : ''}${last.residual.postScore - last.prior.diagScore}점)` : '';
   const fewRes = withRes.length < 2;
   $('#gp-empty-prepost').hidden = !fewRes || !withRes.length;
-  $('#agg-residual-chart').style.display = fewRes ? 'none' : '';
+  $('#box-residual').style.display = fewRes ? 'none' : '';
+  $('#box-subject-delta').style.display = withRes.length ? '' : 'none';
   // 질문 실력
   const pr = S.flatMap(s => ((s.reflect && s.reflect.promptRatings) || []).filter(r => PROMPT_RATE_DIMS.every(d => r[d.k]!=null)));
   if(pr.length){
     const av = PROMPT_RATE_DIMS.map(d => ({ label:d.label, v: pr.reduce((a,r)=>a+r[d.k],0)/pr.length }));
-    const hi = av.slice().sort((a,b)=>b.v-a.v)[0], lo = av.slice().sort((a,b)=>a.v-b.v)[0];
-    $('#gs-sum-prompt').textContent = `내 질문은 ${hi.label}(${hi.v.toFixed(1)}점)이 가장 좋고, ${lo.label}(${lo.v.toFixed(1)}점)을 더 연습하면 좋아요.`;
+    // (그래프 점검 10-05) 점수가 같은 지표가 있으면 함께 말하고, 셋 다 같으면 '고르게'라고 말한다.
+    const r1 = x => Math.round(x*10)/10;
+    const mx = Math.max(...av.map(a=>r1(a.v))), mn = Math.min(...av.map(a=>r1(a.v)));
+    const his = av.filter(a=>r1(a.v)===mx).map(a=>a.label), los = av.filter(a=>r1(a.v)===mn).map(a=>a.label);
+    $('#gs-sum-prompt').textContent = mx === mn
+      ? `내 질문은 ${av.map(a=>a.label).join('·')}이 모두 ${mx.toFixed(1)}점으로 고르게 나왔어요.`
+      : `내 질문은 ${his.join('·')}(${mx.toFixed(1)}점)이 가장 좋고, ${los.join('·')}(${mn.toFixed(1)}점)을 더 연습하면 좋아요.`;
   } else $('#gs-sum-prompt').textContent = '';
+  { const nSess = S.filter(s => ((s.reflect && s.reflect.promptRatings) || []).some(r => PROMPT_RATE_DIMS.every(d => r[d.k]!=null))).length;
+    const lineCol = $('#agg-prompt-line-chart') && $('#agg-prompt-line-chart').closest('.prompt-chart-col');
+    if(lineCol) lineCol.style.display = nSess >= 2 ? '' : 'none';
+    const grid = $('#agg-prompt-wrap'); if(grid) grid.style.gridTemplateColumns = nSess >= 2 ? '' : 'minmax(0,1fr)';
+    const pe = $('#gp-empty-prompt-line'); if(pe) pe.hidden = nSess !== 1; }
   // 스스로 점검
   const ms = S.filter(s => s.meta && s.meta.scoreDetail);
   if(ms.length){
     const L = ms[ms.length-1].meta.scoreDetail, F = ms[0].meta.scoreDetail;
     const names = { understand:'이해 질문', strategy:'전략 질문', connect:'연결 질문' };
     const best = Object.keys(names).sort((a,b)=>L[b]-L[a])[0];
-    $('#gs-sum-meta').textContent = ms.length >= 2
-      ? (Object.keys(names).some(k=>L[k]>F[k]) ? `처음보다 ${Object.keys(names).filter(k=>L[k]>F[k]).map(k=>names[k]).join('·')} 점수가 올랐어요.` : '처음과 비슷한 수준을 유지하고 있어요. 헷갈리는 곳을 구체적으로 짚어 보면 더 좋아져요.')
-      : `지난번엔 ${names[best]}에 가장 잘 답했어요.`;
+    // (그래프 점검 10-05) 점수가 내려가도 "비슷한 수준을 유지"라고 말하던 것을 바로잡는다 — 처음과 최근을 비교해
+    // 5점 넘게 오른 것·내린 것을 그대로 알려 주고, 내린 것은 다음에 해 볼 일로 바꿔 말한다(서열·비교 없이 내 기록만).
+    const TIP = { understand:'헷갈리는 곳을 이유와 함께 짚어', strategy:'이 내용에 맞는 공부 방법과 그 이유를 말해', connect:'배운 것이나 생활과 이어서 말해' };
+    const ks = Object.keys(names), up = ks.filter(k => L[k] - F[k] > 5), down = ks.filter(k => F[k] - L[k] > 5);
+    $('#gs-sum-meta').textContent = ms.length < 2 ? `지난번엔 ${names[best]}에 가장 잘 답했어요.`
+      : (up.length ? `처음보다 ${up.map(k=>names[k]).join('·')} 점수가 올랐어요.` : '')
+        + (down.length ? `${up.length ? ' ' : '처음보다 '}${down.map(k=>names[k]).join('·')} 점수는 내려갔어요. 다음엔 ${TIP[down[0]]} 보면 좋아요.` : '')
+        || '처음과 비슷한 수준이에요. 헷갈리는 곳을 구체적으로 짚어 보면 더 좋아져요.';
   } else $('#gs-sum-meta').textContent = '';
   // (개선) 끝낸 공부가 1번뿐일 때도 세 질문 점수를 막대로 보여 주고(예전엔 문장 한 줄뿐이었다),
   // 아직 없을 때는 빈 화면 대신 안내를 보여 준다. 2번 이상이면 질문 유형별 꺾은선이 함께 나온다.
@@ -2333,7 +2399,7 @@ function renderGrowth(S, sc, topStrat){
   const em = $('#gp-empty-meta');
   em.hidden = ms.length >= 2;
   em.textContent = ms.length ? '공부를 2번 이상 끝내면 질문 유형별 흐름 그래프가 생겨요.' : '아직 기록이 없어요. 공부를 시작할 때 "스스로 점검" 질문에 답하고 공부를 끝내면 여기에 쌓여요.';
-  $('#agg-meta-chart').style.display = ms.length < 2 ? 'none' : '';
+  $('#box-meta').style.display = ms.length < 2 ? 'none' : '';
 }
 function showGrowthTab(tab){
   $$('.growth-tabs .gt').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); b.setAttribute('aria-selected', String(b.dataset.tab === tab)); });
