@@ -1,8 +1,10 @@
 // 교사·연구자용 API — 학생 목록, 데이터 내려받기(CSV/JSON), 그림 비밀번호 초기화
-// 인증: Vercel 환경변수 TEACHER_KEY 와 같은 값을 요청 본문 key 로 보내야 한다(POST만 허용, 주소에 키를 남기지 않음).
+// 인증(2026-10 개선): 교사 계정(아이디+비밀번호, 30일 로그인 유지 쿠키 tsess) 또는 교사 키(TEACHER_KEY).
+// 교사 키는 맨 처음 계정을 만들 때(그리고 비상시) 쓰고, 평소에는 교사 계정으로 들어온다.
+// 계정은 Redis 'tacct:<아이디>'에 비밀번호 해시로 저장한다(시트 저장소에서는 교사 키만 쓸 수 있다).
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
-import { ready, kvGet, kvSet, kvKeys, kvClear, hashPin, loadUserData, sendJSON } from './_store.js';
+import { ready, kvGet, kvSet, kvDel, kvKeys, kvClear, kvIncr, hashPin, verifyPin, makeToken, readToken, getCookie, setCookie, loadUserData, sendJSON } from './_store.js';
 
 const NICK_RE = /^[\p{L}\p{N} _.\-]{1,16}$/u;
 function keyOk(k) {
@@ -10,6 +12,32 @@ function keyOk(k) {
   if (!want || typeof k !== 'string') return false;
   const a = Buffer.from(k), b = Buffer.from(want);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// ---- 교사 계정 도우미 ----
+const T_MAX_FAILS = 8;
+const T_ID_RE = /^[a-z0-9_.\-가-힣]{2,20}$/;
+const normId = v => { const t = String(v || '').trim().toLowerCase(); return T_ID_RE.test(t) ? t : null; };
+const pwProblem = p => { p = String(p || ''); if (p.length < 8) return '비밀번호는 8자 이상이어야 해요.'; if (p.length > 100) return '비밀번호가 너무 길어요.'; if (!/[A-Za-z가-힣]/.test(p) || !/[0-9]/.test(p)) return '비밀번호에 글자와 숫자를 함께 넣어 주세요.'; return null; };
+const hasAccountStore = () => !process.env.GOOGLE_SHEET_ID || !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL);
+async function createTeacher(rawId, password, by) {
+  if (!hasAccountStore()) return { status: 400, error: '이 저장소에서는 교사 계정을 만들 수 없어요(교사 키를 써 주세요).' };
+  const id = normId(rawId); if (!id) return { status: 400, error: '아이디는 2~20자의 영문 소문자·숫자·한글·_.- 로 정해 주세요.' };
+  const bad = pwProblem(password); if (bad) return { status: 400, error: bad };
+  if (await kvGet('tacct:' + id)) return { status: 409, error: '이미 있는 아이디예요.' };
+  const { h, s } = hashPin(String(password));
+  await kvSet('tacct:' + id, JSON.stringify({ h, s, created: new Date().toISOString(), by }));
+  return { id };
+}
+// 30일 로그인 쿠키 확인. 비밀번호를 바꾸면(changedAt) 그 전에 받은 쿠키는 더 쓸 수 없다.
+async function teacherFromCookie(req) {
+  const tok = getCookie(req, 'tsess'); const who = readToken(tok);
+  if (!who || !who.startsWith('T:')) return null;
+  const id = who.slice(2);
+  let acct = null; try { acct = JSON.parse(await kvGet('tacct:' + id)); } catch (e) {}
+  if (!acct) return null;
+  if (acct.changedAt) { const issued = Number(String(tok).split('.')[1]) - 30 * 864e5; if (Date.parse(acct.changedAt) > issued) return null; }
+  return id;
 }
 async function userList() { return (await kvKeys('user:*')).map(k => k.slice(5)).sort(); }
 async function loadAll(users) {
@@ -80,10 +108,60 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
   const r = ready();
   if (!r.store) { res.status(500).json({ error: '저장소 설정이 없습니다.' }); return; }
-  if (!process.env.TEACHER_KEY) { res.status(500).json({ error: '서버에 TEACHER_KEY 환경변수가 없습니다.' }); return; }
   const body = req.body || {};
-  if (!keyOk(body.key)) { await new Promise(x => setTimeout(x, 600)); res.status(401).json({ error: '교사 키가 맞지 않아요.' }); return; }
+  // ---- 교사 계정: 로그인·처음 설정·로그아웃·내 정보 ----
+  if (body.action === 't_login') {
+    const id = normId(body.id), pw = String(body.password || '');
+    if (!id) { res.status(400).json({ error: '아이디를 확인해 주세요.' }); return; }
+    const failKey = 'tfail:' + id;
+    if ((Number(await kvGet(failKey)) || 0) >= T_MAX_FAILS) { res.status(429).json({ error: '비밀번호를 여러 번 틀려서 15분 동안 잠겼어요.' }); return; }
+    let acct = null; try { acct = JSON.parse(await kvGet('tacct:' + id)); } catch (e) {}
+    if (!acct || !verifyPin(pw, acct.s, acct.h)) {
+      await kvIncr(failKey, 900); await new Promise(x => setTimeout(x, 600));
+      res.status(401).json({ error: '아이디 또는 비밀번호가 맞지 않아요.' }); return;
+    }
+    await kvClear(failKey);
+    res.setHeader('Set-Cookie', setCookie('tsess', makeToken('T:' + id, 30), 30 * 86400));
+    res.status(200).json({ ok: true, id }); return;
+  }
+  if (body.action === 't_logout') { res.setHeader('Set-Cookie', setCookie('tsess', '', 0)); res.status(200).json({ ok: true }); return; }
+  if (body.action === 't_setup') { // 교사 키로 교사 계정 만들기(첫 계정 또는 비상시)
+    if (!keyOk(body.key)) { await new Promise(x => setTimeout(x, 600)); res.status(401).json({ error: '교사 키가 맞지 않아요.' }); return; }
+    const made = await createTeacher(body.id, body.password, 'teacher-key');
+    if (made.error) { res.status(made.status).json({ error: made.error }); return; }
+    res.setHeader('Set-Cookie', setCookie('tsess', makeToken('T:' + made.id, 30), 30 * 86400));
+    res.status(200).json({ ok: true, id: made.id }); return;
+  }
+  const me = await teacherFromCookie(req);
+  if (body.action === 't_me') { res.status(200).json({ id: me || null, accounts: hasAccountStore() }); return; }
+  // 그 밖의 모든 요청: 교사 계정 로그인 또는 교사 키가 있어야 한다.
+  if (!me && !keyOk(body.key)) { await new Promise(x => setTimeout(x, 600)); res.status(401).json({ error: '먼저 교사 계정으로 로그인해 주세요.' }); return; }
   try {
+    if (body.action === 't_passwd') {
+      if (!me) { res.status(400).json({ error: '교사 계정으로 로그인한 뒤 바꿀 수 있어요.' }); return; }
+      let acct = null; try { acct = JSON.parse(await kvGet('tacct:' + me)); } catch (e) {}
+      if (!acct || !verifyPin(String(body.old || ''), acct.s, acct.h)) { res.status(401).json({ error: '지금 비밀번호가 맞지 않아요.' }); return; }
+      const bad = pwProblem(body.password); if (bad) { res.status(400).json({ error: bad }); return; }
+      const { h, s: salt } = hashPin(String(body.password));
+      await kvSet('tacct:' + me, JSON.stringify({ ...acct, h, s: salt, changedAt: new Date().toISOString() }));
+      res.setHeader('Set-Cookie', setCookie('tsess', makeToken('T:' + me, 30), 30 * 86400)); // 다른 기기의 로그인은 풀린다
+      res.status(200).json({ ok: true }); return;
+    }
+    if (body.action === 't_add') {
+      const made = await createTeacher(body.id, body.password, me || 'teacher-key');
+      if (made.error) { res.status(made.status).json({ error: made.error }); return; }
+      res.status(200).json({ ok: true, id: made.id }); return;
+    }
+    if (body.action === 't_list') {
+      const ids = (await kvKeys('tacct:*')).map(k => k.slice(6)).sort();
+      res.status(200).json({ teachers: ids, me }); return;
+    }
+    if (body.action === 't_remove') {
+      const id = normId(body.id);
+      if (!id) { res.status(400).json({ error: '아이디를 확인해 주세요.' }); return; }
+      if (id === me) { res.status(400).json({ error: '지금 로그인한 내 계정은 지울 수 없어요.' }); return; }
+      await kvDel('tacct:' + id); res.status(200).json({ ok: true }); return;
+    }
     if (body.action === 'list') {
       const all = await loadAll();
       sendJSON(req, res, 200, { students: all.map(a => ({ nickname: a.nickname, created: a.created, done: a.sessions.filter(s => !s.incomplete).length, incomplete: a.sessions.filter(s => s.incomplete).length + (a.draft ? 1 : 0), last: [...a.sessions.map(s => s.endedAt || s.startedAt), a.draft && a.draft.savedAt].filter(Boolean).sort().pop() || '' })) });

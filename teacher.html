@@ -26,30 +26,43 @@
 </head>
 <body>
 <main>
-  <h1>🧑‍🏫 교사용 관리</h1>
-  <p class="sub">학생 목록 확인, 연구 데이터 내려받기, 학생 그림 비밀번호 초기화를 할 수 있어요. 학생에게는 이 주소를 알려 주지 마세요.</p>
+  <div class="row" style="justify-content:space-between;align-items:flex-start">
+    <div><h1>🧑‍🏫 교사용 관리</h1>
+    <p class="sub">학생 목록 확인, 연구 데이터 내려받기, 학생 그림 비밀번호 초기화를 할 수 있어요. 학생에게는 이 화면을 알려 주지 마세요.</p></div>
+    <div id="who" class="row" hidden><span id="who-name" class="hint" style="font-size:14px;color:var(--ink)"></span><button id="btn-logout">로그아웃</button></div>
+  </div>
 
+  <!-- (2026-10 개선) 교사 계정: 아이디+비밀번호로 로그인하고 30일 동안 유지. 교사 키는 처음 계정을 만들 때만 쓴다. -->
+  <div class="card" id="login-card" hidden>
+    <h2>교사 로그인</h2>
+    <div class="row"><input type="text" id="lid" placeholder="아이디" autocomplete="username" /><input type="password" id="lpw" placeholder="비밀번호" autocomplete="current-password" /><button class="pri" id="btn-login">로그인</button></div>
+    <div class="hint">한 번 로그인하면 이 기기에서 30일 동안 다시 묻지 않아요. 비밀번호를 8번 틀리면 15분 동안 잠겨요.</div>
+    <div class="msg" id="m0"></div>
+    <details style="margin-top:14px" id="setup-box">
+      <summary style="cursor:pointer;font-weight:700;font-size:14px">처음이에요 · 교사 키로 계정 만들기</summary>
+      <div class="hint" style="margin:8px 0">관리자에게 받은 교사 키로 내 교사 계정을 한 번 만들면, 그다음부터는 아이디와 비밀번호로 들어와요.</div>
+      <div class="row"><input type="password" id="skey" placeholder="교사 키" autocomplete="off" /></div>
+      <div class="row" style="margin-top:6px"><input type="text" id="sid" placeholder="만들 아이디 (예: moon)" autocomplete="username" /><input type="password" id="spw" placeholder="비밀번호 (8자 이상, 글자+숫자)" autocomplete="new-password" /><input type="password" id="spw2" placeholder="비밀번호 한 번 더" autocomplete="new-password" /><button class="pri" id="btn-setup">계정 만들기</button></div>
+      <div class="msg" id="ms"></div>
+    </details>
+  </div>
+
+  <div id="app" hidden>
   <div class="card">
-    <h2>1. 교사 키</h2>
-    <div class="row"><input type="password" id="key" placeholder="교사 키 붙여 넣기" autocomplete="off" /><button class="pri" id="btn-list">학생 목록 불러오기</button></div>
-    <div class="hint">키는 이 브라우저 탭을 닫으면 잊혀요.</div>
+    <h2>1. 학생 목록 <button id="btn-list" style="margin-left:8px">새로 고침</button></h2>
+    <div id="list" class="hint">불러오는 중…</div>
     <div class="msg" id="m1"></div>
   </div>
 
   <div class="card">
-    <h2>2. 학생 목록</h2>
-    <div id="list" class="hint">교사 키를 넣고 [학생 목록 불러오기]를 누르세요.</div>
-  </div>
-
-  <div class="card">
-    <h2>3. 데이터 내려받기</h2>
+    <h2>2. 데이터 내려받기</h2>
     <div class="row"><button id="btn-csv">세션 요약 CSV (엑셀용)</button><button id="btn-json">전체 원자료 JSON (대화 포함)</button></div>
     <div class="hint">CSV는 세션 1개가 한 줄(끝낸 공부 / 끝내지 않은 공부 / 진행 중)이며 사전·사후 점수, 메타인지 점수, 고른 방법, 진단 수준, 성찰 글 등을 담아요. JSON에는 대화 전체가 들어 있어요. 학생 이름 대신 닉네임만 저장돼요.</div>
     <div class="msg" id="m3"></div>
   </div>
 
   <div class="card">
-    <h2>4. 그림 비밀번호 초기화</h2>
+    <h2>3. 학생 그림 비밀번호 초기화</h2>
     <div class="row"><input type="text" id="rnick" placeholder="학생 닉네임" /></div>
     <div class="hint" style="margin-top:8px">새 그림 4개를 순서대로 고르세요(학생에게 이 순서를 알려 주세요).</div>
     <div class="slots" id="slots">❔❔❔❔</div>
@@ -57,27 +70,72 @@
     <div class="row"><button id="btn-clear">다시 고르기</button><button class="pri" id="btn-reset" disabled>비밀번호 바꾸기</button></div>
     <div class="msg" id="m4"></div>
   </div>
+  <div class="card">
+    <h2>4. 내 계정과 선생님 계정</h2>
+    <div class="hint" style="margin-bottom:6px">내 비밀번호 바꾸기 (바꾸면 다른 기기의 로그인은 풀려요)</div>
+    <div class="row"><input type="password" id="pw-old" placeholder="지금 비밀번호" autocomplete="current-password" /><input type="password" id="pw-new" placeholder="새 비밀번호 (8자 이상, 글자+숫자)" autocomplete="new-password" /><button id="btn-pw">바꾸기</button></div>
+    <div class="msg" id="m5"></div>
+    <div class="hint" style="margin:16px 0 6px">함께 쓰는 선생님·연구자 계정 추가 (처음 비밀번호를 알려 주고, 로그인 뒤 직접 바꾸게 해 주세요)</div>
+    <div class="row"><input type="text" id="add-id" placeholder="아이디" autocomplete="off" /><input type="password" id="add-pw" placeholder="처음 비밀번호" autocomplete="new-password" /><button id="btn-add">계정 추가</button></div>
+    <div class="msg" id="m6"></div>
+    <div id="tlist" class="hint" style="margin-top:12px"></div>
+  </div>
+  </div>
 </main>
 <script>
 const PICS = ['🍎','🍌','🍇','🍓','🍉','🥕','🐶','🐱','🐰','🦁','🐼','🐢','🚀','🚗','⚽','🎈','📚','🎸','🌈','⭐','🍕','🎨','🔑','🧭'];
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-try { const k = sessionStorage.getItem('teacherKey'); if (k) $('#key').value = k; } catch (e) {}
-const key = () => { const k = $('#key').value.trim(); try { sessionStorage.setItem('teacherKey', k); } catch (e) {} return k; };
 async function call(body, raw) {
-  const r = await fetch('/api/teacher', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ key: key(), ...body }) });
+  const r = await fetch('/api/teacher', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify(body) });
+  if (r.status === 401 && body.action !== 't_login' && body.action !== 't_setup') { showLogin(); }
   if (!r.ok) { let e = {}; try { e = await r.json(); } catch (_) {} throw new Error(e.error || ('오류 ' + r.status)); }
   return raw ? r : r.json();
 }
+function showLogin() { $('#app').hidden = true; $('#who').hidden = true; $('#login-card').hidden = false; }
+function showApp(id) { $('#login-card').hidden = true; $('#app').hidden = false; $('#who').hidden = false; $('#who-name').textContent = `${id} 선생님`; loadList(); loadTeachers(); }
+async function boot() {
+  try { const j = await call({ action:'t_me' }); if (j.id) showApp(j.id); else showLogin(); } catch (e) { showLogin(); }
+}
 function msg(id, t, ok) { const m = $(id); m.textContent = t; m.className = 'msg ' + (ok ? 'ok' : 'err'); }
-$('#btn-list').onclick = async () => {
-  msg('#m1', '불러오는 중…', true);
+async function loadList() {
+  $('#m1').textContent = '';
   try {
     const j = await call({ action:'list' });
-    msg('#m1', `학생 ${j.students.length}명`, true);
-    $('#list').innerHTML = j.students.length ? `<table><thead><tr><th>닉네임</th><th>가입</th><th>끝낸 공부</th><th>끝내지 않음/진행 중</th><th>마지막 활동</th></tr></thead><tbody>${
+    $('#list').innerHTML = j.students.length ? `<div class="hint" style="margin-bottom:6px">학생 ${j.students.length}명</div><table><thead><tr><th>닉네임</th><th>가입</th><th>끝낸 공부</th><th>끝내지 않음/진행 중</th><th>마지막 활동</th></tr></thead><tbody>${
       j.students.map(s => `<tr><td>${esc(s.nickname)}</td><td>${esc((s.created||'').slice(0,10))}</td><td>${s.done}</td><td>${s.incomplete}</td><td>${esc((s.last||'').replace('T',' ').slice(0,16))}</td></tr>`).join('')}</tbody></table>` : '아직 학생이 없어요.';
   } catch (e) { msg('#m1', e.message); }
+}
+$('#btn-list').onclick = loadList;
+async function loadTeachers() {
+  try {
+    const j = await call({ action:'t_list' });
+    $('#tlist').innerHTML = '선생님 계정: ' + j.teachers.map(t => `<span style="display:inline-flex;gap:4px;align-items:center;margin-right:10px"><b style="color:var(--ink)">${esc(t)}</b>${t === j.me ? ' (나)' : `<button data-rm="${esc(t)}" style="padding:2px 8px;font-size:12px">지우기</button>`}</span>`).join('');
+  } catch (e) { $('#tlist').textContent = ''; }
+}
+$('#tlist').onclick = async e => {
+  const b = e.target.closest('[data-rm]'); if (!b) return;
+  if (!confirm(`${b.dataset.rm} 계정을 지울까요?`)) return;
+  try { await call({ action:'t_remove', id: b.dataset.rm }); loadTeachers(); } catch (err) { msg('#m6', err.message); }
+};
+$('#btn-login').onclick = async () => {
+  try { const j = await call({ action:'t_login', id: $('#lid').value, password: $('#lpw').value }); $('#lpw').value=''; showApp(j.id); }
+  catch (e) { msg('#m0', e.message); }
+};
+$('#lpw').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btn-login').click(); });
+$('#btn-setup').onclick = async () => {
+  if ($('#spw').value !== $('#spw2').value) { msg('#ms', '두 비밀번호가 달라요.'); return; }
+  try { const j = await call({ action:'t_setup', key: $('#skey').value.trim(), id: $('#sid').value, password: $('#spw').value }); ['#skey','#spw','#spw2'].forEach(x => $(x).value=''); showApp(j.id); }
+  catch (e) { msg('#ms', e.message); }
+};
+$('#btn-logout').onclick = async () => { try { await call({ action:'t_logout' }); } catch (e) {} showLogin(); };
+$('#btn-pw').onclick = async () => {
+  try { await call({ action:'t_passwd', old: $('#pw-old').value, password: $('#pw-new').value }); $('#pw-old').value = $('#pw-new').value = ''; msg('#m5', '바꿨어요.', true); }
+  catch (e) { msg('#m5', e.message); }
+};
+$('#btn-add').onclick = async () => {
+  try { const j = await call({ action:'t_add', id: $('#add-id').value, password: $('#add-pw').value }); $('#add-id').value = $('#add-pw').value = ''; msg('#m6', `${j.id} 계정을 만들었어요.`, true); loadTeachers(); }
+  catch (e) { msg('#m6', e.message); }
 };
 async function download(format) {
   msg('#m3', '만드는 중…', true);
@@ -116,6 +174,7 @@ $('#btn-reset').onclick = async () => {
   try { await call({ action:'reset', nickname: nick, pin: pin.join('') }); msg('#m4', `바꿨어요. 학생에게 ${pin.join(' ')} 순서를 알려 주세요.`, true); pin = []; paint(); }
   catch (e) { msg('#m4', e.message); }
 };
+boot();
 </script>
 </body>
 </html>
