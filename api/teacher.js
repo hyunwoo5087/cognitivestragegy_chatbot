@@ -25,6 +25,12 @@ async function loadAll(users) {
   return out;
 }
 const avg = a => { const v = a.filter(x => typeof x === 'number'); return v.length ? Math.round(v.reduce((p, c) => p + c, 0) / v.length * 10) / 10 : ''; };
+// 메타 하위 지표 9개(이해·전략·연결 × 구체성 s·이유 r·조건 c). 구 기준(v1) 세션은 빈칸.
+function metaInd(I) {
+  const o = {};
+  for (const [k, ab] of [['understand', 'u'], ['strategy', 's'], ['connect', 'c']]) for (const x of ['s', 'r', 'c']) o[`meta_${ab}_${x}`] = I && I[k] ? I[k][x] : '';
+  return o;
+}
 function row(nick, s, status) {
   const turns = s.turns || [], evals = (s.tasks || []).flatMap(t => t.evals || []);
   const me = turns.filter(t => t.role === 'me'), ai = turns.filter(t => t.role === 'ai' && t.text);
@@ -44,7 +50,20 @@ function row(nick, s, status) {
     prompt_ratings: ((s.reflect && s.reflect.promptRatings) || []).map(r => [r.specificity, r.logic, r.clarity].join('/')).join('|'),
     post_score: rs.postScore ?? '', post_activate: rsub.activate ?? '', post_understand: rsub.understand ?? '', post_apply: rsub.apply ?? '',
     self_explain: rr.selfExplain ? rr.selfExplain.level : '', strategy_transfer: rr.transfer ? rr.transfer.applied : '', brier: typeof rr.metacogBrier === 'number' ? Math.round(rr.metacogBrier * 1000) / 1000 : '',
-    post_judge: rs.judge || '', journal: rs.journal || ''
+    post_judge: rs.judge || '', journal: rs.journal || '',
+    // (2026-10 사용성 검증용 추가 변수) 설계 결정(답 요청 단계 공개·난이도 사다리·메타 하위 지표)을 분석할 수 있게 한다.
+    duration_min: (s.startedAt && s.endedAt) ? Math.round((Date.parse(s.endedAt) - Date.parse(s.startedAt)) / 60000) : '',
+    pre_version: (pr.items || []).some(i => i && i.ladder === 'v2') ? 'ladder-v2' : 'v1',
+    pre_items: (pr.items || []).map(i => i && i.score != null ? i.score : '').join('|'),
+    post_items: (rs.items || []).map(i => i && i.score != null ? i.score : '').join('|'),
+    meta_version: (s.meta && s.meta.scoreVersion) || 'v1',
+    ...metaInd(s.meta && s.meta.indicators),
+    ans_hint1: ai.filter(t => /이 과업에서 처음/.test(t.instr || '')).length,
+    ans_hint2: ai.filter(t => /두 번째로 답을 달라고/.test(t.instr || '')).length,
+    ans_reveal: ai.filter(t => /\[풀이 공개 턴\]/.test(t.instr || '')).length,
+    ans_after_reveal: ai.filter(t => /이미 AI가 보여 준 풀이를 받은 뒤/.test(t.instr || '')).length,
+    fade_proposed: turns.filter(t => t.kind === 'fade-propose').length,
+    fade_accepted: turns.filter(t => t.kind === 'fade-propose' && t.accepted).length
   };
 }
 function toCSV(rows) {

@@ -57,16 +57,21 @@ export default async function handler(req, res) {
   if (response_format && response_format.type === 'json_object') body.response_format = { type: 'json_object' };
 
   try {
-    const upstream = await fetch("https://api.upstage.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`
-      },
-      body: JSON.stringify(body)
-    });
-
-    const data = await upstream.json();
+    // (2026-10 사용성 검증 전 점검) 한 반이 동시에 쓰면 Upstage 호출 한도(429)에 걸릴 수 있다(가상 학생 4명 동시 실행에서
+    // 실제로 발생). 429·5xx는 Retry-After를 따르거나 점점 길게(1.5→3→6초, 무작위 흔들기) 기다렸다가 최대 3번 다시 보낸다.
+    let upstream, data;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      upstream = await fetch("https://api.upstage.ai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify(body)
+      });
+      if (!(upstream.status === 429 || upstream.status >= 500) || attempt === 3) break;
+      const ra = Number(upstream.headers.get('retry-after'));
+      const wait = Math.min(8000, (Number.isFinite(ra) && ra > 0 ? ra * 1000 : 1500 * 2 ** attempt)) + Math.floor(Math.random() * 600);
+      await new Promise(r => setTimeout(r, wait));
+    }
+    data = await upstream.json().catch(() => ({ error: 'bad upstream json' }));
     res.status(upstream.status).json(data);
   } catch (err) {
     res.status(502).json({ error: "Upstage API 호출 중 오류가 발생했습니다.", detail: String(err) });
