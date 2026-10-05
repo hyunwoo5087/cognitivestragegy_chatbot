@@ -47,7 +47,8 @@ export default async function handler(req, res) {
       const sessions = [...byId.values()];
       // (사용성) 진행 중인 세션 임시 저장본 — 새로고침·탭 닫힘 뒤 이어서 하기. 이미 끝낸(또는 그만둔) 공부의 임시본은 버린다.
       let draft = body.draft && typeof body.draft === 'object' ? body.draft : null;
-      if (draft && draft.session && byId.has(String(draft.session.id))) draft = null;
+      // (10-05) 끝내지 않은 공부를 '이어서 끝내기'로 다시 여는 경우는 임시본을 살린다(같은 id의 기록이 미완료일 때).
+      if (draft && draft.session && byId.has(String(draft.session.id)) && !byId.get(String(draft.session.id)).incomplete) draft = null;
       // (개선) 화면은 바뀐 세션만 보내고(나머지는 위에서 서버 기록과 합침), 저장은 압축한다.
       const doc = packDoc({
         nickname: nick,

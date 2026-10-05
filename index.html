@@ -431,6 +431,9 @@
   .ppg-bar{position:relative;height:16px;background:var(--surface-2,#f1f3f5);border-radius:6px;overflow:hidden}
   .ppg-bar i{display:block;height:100%;border-radius:6px}
   .ppg-bar span{position:absolute;left:8px;top:0;line-height:16px;font-size:11px;font-weight:700;color:#1f2937}
+  .sess-item .note .inc-tag{display:block;white-space:nowrap}
+  .sess-item .note .inc-sub{display:block;font-size:11.5px;color:var(--accent-ink);font-weight:700;margin-top:2px;white-space:nowrap}
+  .inc-box .inc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
   .gp-note{font-size:11.5px;color:var(--muted);margin:8px 0 0}
   .chart-box{position:relative;width:100%;height:240px;margin-bottom:12px}
   .chart-box.sm{height:200px}
@@ -2301,17 +2304,23 @@ function renderHome(){
   // 요청사항(2번째 피드백) 1: 지난 공부 기록을 눌러도 아무 반응이 없던 문제 — 클릭용 data-id와
   // 커서 스타일을 추가하고, 아래 이벤트 위임(#sess-list click)에서 상세보기 모달을 연다.
   // (개선) 기록이 많아지면 최근 3개만 먼저 보이고 [더 보기]로 펼친다
-  const LIST_N = window._sessListAll ? ALL_S.length : 3;
-  $('#sess-list').innerHTML = ALL_S.length
-    ? ALL_S.slice().reverse().slice(0, LIST_N).map(s=>{
+  // (사용성 10-05) 끝내지 않은 공부를 이어서 끝내거나 목록에서 숨길 수 있게 했다. 숨긴 기록도 지우지는 않는다(연구 자료·선생님 내려받기에는 남음).
+  const draftId = acc.draft && acc.draft.session ? acc.draft.session.id : null;
+  const LIST_ALL = ALL_S.filter(s => s.id !== draftId && (window._sessShowHidden || !s.hidden));
+  const hiddenN = ALL_S.filter(s => s.hidden && s.id !== draftId).length;
+  const LIST_N = window._sessListAll ? LIST_ALL.length : 3;
+  $('#sess-list').innerHTML = LIST_ALL.length
+    ? LIST_ALL.slice().reverse().slice(0, LIST_N).map(s=>{
         const emo = SUBJECT_EMOJI[s.ctx.subject] || '';
         const turnsN = (s.turns||[]).filter(t=>t.role==='me').length; // 내가 보낸 말 수(위 통계와 같은 기준)
-        const note = s.incomplete ? '⏸ 끝내지 않은 공부' : (esc(trim(s.reflect&&s.reflect.note,34)) || '돌아보기 안 씀');
-        return `<div class="sess-item" data-id="${esc(s.id)}" style="cursor:pointer" role="button" tabindex="0"><div><div class="t">${emo} ${esc(trim(s.ctx.std,48))}</div><div class="d">${s.startedAt.slice(0,10)} · ${s.ctx.grade||s.ctx.band} ${s.ctx.subject} · ${turnsN} · ${s.strategyLabel||'안 골랐어요'} · AI 도움 ${SUPPORT_LABEL[s.support]||'-'}</div></div><div class="note">${note}</div></div>`;
+        const note = s.incomplete ? `<span class="inc-tag">⏸ 끝내지 않은 공부</span><small class="inc-sub">${s.hidden?'숨긴 기록 · ':''}눌러서 이어서 끝내기</small>` : (esc(trim(s.reflect&&s.reflect.note,34)) || '돌아보기 안 씀');
+        return `<div class="sess-item" data-id="${esc(s.id)}" style="cursor:pointer" role="button" tabindex="0"><div><div class="t">${emo} ${esc(trim(s.ctx.std,48))}</div><div class="d">${s.startedAt.slice(0,10)} · ${s.ctx.grade||s.ctx.band} ${s.ctx.subject} · 내 말 ${turnsN}번 · ${s.strategyLabel||'방법 안 고름'} · AI 도움 ${SUPPORT_LABEL[s.support]||'-'}</div></div><div class="note">${note}</div></div>`;
       }).join('')
     : emptyState('', '아직 기록이 없어요.<br>새 공부를 시작하면 여기에 쌓여요!');
-  if(ALL_S.length > 3) $('#sess-list').insertAdjacentHTML('beforeend', `<button type="button" class="btn btn-ghost btn-sm" id="sess-more">${window._sessListAll ? '접기' : `지난 기록 ${ALL_S.length-3}개 더 보기`}</button>`);
+  if(LIST_ALL.length > 3) $('#sess-list').insertAdjacentHTML('beforeend', `<button type="button" class="btn btn-ghost btn-sm" id="sess-more">${window._sessListAll ? '접기' : `지난 기록 ${LIST_ALL.length-3}개 더 보기`}</button>`);
   { const m = $('#sess-more'); if(m) m.onclick = ()=>{ window._sessListAll = !window._sessListAll; renderHome(); }; }
+  if(hiddenN) $('#sess-list').insertAdjacentHTML('beforeend', `<button type="button" class="btn btn-ghost btn-sm" id="sess-hidden-toggle">${window._sessShowHidden ? '숨긴 기록 다시 감추기' : `숨긴 기록 ${hiddenN}개 보기`}</button>`);
+  { const h = $('#sess-hidden-toggle'); if(h) h.onclick = ()=>{ window._sessShowHidden = !window._sessShowHidden; renderHome(); }; }
 
   renderGrowth(S, sc, topStrat);
   $('#home-summary-line').textContent = S.length
@@ -2445,6 +2454,12 @@ function openSessDetail(s){
     </div>
     ${(s.ctx.extraStds&&s.ctx.extraStds.length) ? `<div class="kv"><span>함께 다룬 것</span><b>${esc(s.ctx.extraStds.map(e=>e.subject+' · '+e.name).join(' / '))}</b></div>` : ''}
     ${s.goal ? `<div class="kv"><span>그날 목표</span><b>${esc(s.goal)}</b></div>` : ''}
+    ${s.incomplete ? `<div class="callout warn inc-box">
+      <b>끝내지 않은 공부예요</b> — ${({chat:'AI와 이야기하던 중', reflect:'돌아보던 중', residual:'혼자 풀어보던 중'}[s.stoppedAt]||'공부하던 중')}에 멈췄어요. 멈춘 곳부터 이어서 끝낼 수 있어요.
+      <div class="inc-actions"><button type="button" class="btn btn-primary btn-sm" id="sd-resume" data-id="${esc(s.id)}">이어서 끝내기</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="sd-hide" data-id="${esc(s.id)}">${s.hidden?'목록에 다시 보이기':'목록에서 숨기기'}</button></div>
+      <p class="hint" style="margin:6px 0 0">숨겨도 기록은 지워지지 않아요. 아래 [숨긴 기록 보기]로 다시 볼 수 있어요.</p>
+    </div>` : ''}
     <div class="kv"><span>고른 방법</span><b>${esc(s.strategyLabel||'안 골랐어요')}</b></div>
     ${s.strategyReason ? `<div class="kv"><span>고른 이유</span><b>${esc(s.strategyReason)}</b></div>` : ''}
     <div class="kv"><span>AI 도움 크기</span><b>${SUPPORT_LABEL[s.support]||'-'}</b></div>
@@ -2472,6 +2487,30 @@ function openSessDetail(s){
   $('#sess-detail-scrim').classList.add('open');
 }
 function closeSessDetail(){ $('#sess-detail-scrim').classList.remove('open'); }
+// (사용성 10-05) 끝내지 않은 공부 이어서 끝내기: 기록을 임시 저장본(draft)으로 되돌려 멈춘 화면에서 다시 시작한다.
+// 서버에 있는 미완료 기록은 그대로 두고(안전), 끝내면 같은 id의 완료 기록으로 바뀐다.
+function resumeIncomplete(id){
+  const acc = account(); if(!acc) return;
+  const s0 = acc.sessions.find(x => x.id === id); if(!s0 || !s0.incomplete) return;
+  if(acc.draft && acc.draft.session && acc.draft.session.id !== id){
+    if(!confirm('지금 하던 다른 공부는 "끝내지 않은 공부"로 기록하고, 이 공부를 이어서 할까요?')) return;
+    archiveDraft();
+  }
+  const copy = JSON.parse(JSON.stringify(s0));
+  const scr = ['chat','reflect','residual'].includes(copy.stoppedAt) ? copy.stoppedAt : 'chat';
+  delete copy.incomplete; delete copy.stoppedAt; delete copy.hidden;
+  if(scr === 'chat') delete copy.endedAt;
+  acc.draft = { session: copy, screen: scr, savedAt: new Date().toISOString() };
+  flushSave();
+  closeSessDetail();
+  resumeDraft();
+}
+function toggleHideSession(id){
+  const acc = account(); if(!acc) return;
+  const s0 = acc.sessions.find(x => x.id === id); if(!s0) return;
+  if(s0.hidden) delete s0.hidden; else s0.hidden = true;
+  flushSave(); closeSessDetail(); renderHome();
+}
 
 // 요청사항(12번째 피드백) 2: "고등학생 대상 국영수사과 예시 샘플 데이터 하나씩만 더미로
 // 넣어볼래?" — 대시보드 그래프·위젯이 데이터가 쌓였을 때 실제로 어떻게 보이는지 미리 보기
@@ -5620,7 +5659,11 @@ function init(){
     const s = acc.sessions.find(x=>x.id===it.dataset.id); if(!s) return;
     openSessDetail(s);
   });
-  $('#sess-detail-body').addEventListener('click', e=>{ if(e.target.closest('#sess-detail-close')) closeSessDetail(); });
+  $('#sess-detail-body').addEventListener('click', e=>{
+    if(e.target.closest('#sess-detail-close')) closeSessDetail();
+    const r = e.target.closest('#sd-resume'); if(r) resumeIncomplete(r.dataset.id);
+    const h = e.target.closest('#sd-hide'); if(h) toggleHideSession(h.dataset.id);
+  });
   $('#sess-detail-scrim').addEventListener('click', e=>{ if(e.target.id==='sess-detail-scrim') closeSessDetail(); });
   $('#quick-actions').addEventListener('click', e=>{
     const b=e.target.closest('button'); if(!b) return;

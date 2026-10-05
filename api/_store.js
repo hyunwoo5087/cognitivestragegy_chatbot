@@ -315,7 +315,7 @@ export async function loadUserData(nick, fallbackCreated) {
   let draft = null;
   try { draft = unpackDoc(await kvGet('draft:' + nick)); } catch (e) { draft = null; }
   if (!draft) draft = data.draft || null; // 예전 형식(기록 안에 draft)도 읽는다
-  if (draft && draft.session && data.sessions.some(s => s && String(s.id) === String(draft.session.id))) draft = null; // 이미 끝낸 공부
+  if (draft && draft.session && data.sessions.some(s => s && String(s.id) === String(draft.session.id) && !s.incomplete)) draft = null; // 이미 끝낸 공부(미완료 기록을 이어서 하는 중이면 살린다)
   data.draft = draft;
   return data;
 }
