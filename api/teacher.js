@@ -63,7 +63,10 @@ function row(nick, s, status) {
     ans_reveal: ai.filter(t => /\[풀이 공개 턴\]/.test(t.instr || '')).length,
     ans_after_reveal: ai.filter(t => /이미 AI가 보여 준 풀이를 받은 뒤/.test(t.instr || '')).length,
     fade_proposed: turns.filter(t => t.kind === 'fade-propose').length,
-    fade_accepted: turns.filter(t => t.kind === 'fade-propose' && t.accepted).length
+    fade_accepted: turns.filter(t => t.kind === 'fade-propose' && t.accepted).length,
+    // 원리 5: 과업 분담(유동 블록 0~100, 50 이상=AI 쪽) · AI 고정 과업의 '먼저 나서기' 토글
+    ...['define_problem', 'explain_result', 'summarize_key', 'draft_first', 'structure_complex'].reduce((o, k) => (o['task_' + k] = (s.taskBlocks || {})[k] ?? '', o), {}),
+    ...['find_ref', 'scaffold_help', 'grade_feedback'].reduce((o, k) => (o['ai_' + k] = (s.fixedToggle || {})[k] == null ? '' : ((s.fixedToggle || {})[k] ? 1 : 0), o), {})
   };
 }
 function toCSV(rows) {
