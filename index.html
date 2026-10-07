@@ -229,7 +229,17 @@
   @media(max-width:760px){.grid-2{grid-template-columns:1fr}}
   .box{border:1px solid var(--line);border-radius:14px;padding:18px}
   .box h4{font-size:13px;font-weight:800;margin-bottom:12px}
+  .box.prompt-pick{padding:0;overflow:hidden}
   .box.prompt-pick:hover{border-color:var(--muted)}
+  .pp-head{display:block;width:100%;text-align:left;background:none;border:0;padding:11px 14px;cursor:pointer;font:inherit;color:inherit}
+  .pp-meta{display:block;margin-bottom:4px}
+  .pp-text{display:block;font-size:13.5px;color:var(--ink)}
+  .pp-cta{color:var(--accent-ink)}
+  .pp-state{color:#9a3412}.pp-state.done{color:#0b6b3d}
+  .prompt-rate{border-top:1px dashed var(--line);padding:12px 14px 12px;display:flex;flex-direction:column;gap:12px;background:var(--surface)}
+  .prompt-rate .understand-pick{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+  .prompt-rate .u-chip{justify-content:center;min-height:38px;padding:6px 4px}
+  .prompt-rate .prompt-unrate{align-self:flex-end}
   .box.prompt-pick.is-selected{border-color:var(--accent);background:var(--accent-wash)}
   .metric{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0;border-bottom:1px dashed var(--line);color:var(--ink-2)}
   .metric:last-child{border:0}
@@ -1210,7 +1220,8 @@
     <!-- 나: 프롬프트(질문) 궤적 성찰 -->
     <div id="reflect-step-b" class="card stack" hidden>
       <div>
-        <h4 style="font-size:13px;font-weight:800;margin-bottom:10px">내가 AI에게 썼던 질문들 — 돌아볼 질문을 <b>하나 이상</b> 골라요 <span class="req-tag">꼭 해요</span></h4>
+        <h4 style="font-size:13px;font-weight:800;margin-bottom:4px">내가 AI에게 썼던 질문들 — 돌아볼 질문을 <b>하나 이상</b> 골라요 <span class="req-tag">꼭 해요</span></h4>
+        <p class="hint" style="margin:0 0 10px">질문을 누르면 바로 아래에 그 질문의 점수 칸(구체성·논리성·명시성)이 열려요. 여러 개 골라 질문마다 따로 매길 수 있어요.</p>
         <div class="stack" id="prompt-list" style="gap:8px"></div>
       </div>
       <!-- 요청사항(11번째 피드백) 6: "질문 하나가 아니라, 유의미하다고 내가 직접 고른 복수개의
@@ -3265,7 +3276,10 @@ function pushMetaScoreCard(){
   session.turns.push({ id:uid(), role:'note', kind:'meta-score', text:'', meta:{ ...md, indicators:session.meta.indicators||null, feedback:session.meta.feedback, calib:session.meta.calib||null } });
   renderStream();
 }
-function pushMe(text, delegate){ session.turns.push({ id:uid(), role:'me', text, phase:session.phase, delegate:!!delegate, initiative: delegate?'ai':'self' }); renderStream(); }
+function pushMe(text, delegate, auto){ session.turns.push(Object.assign({ id:uid(), role:'me', text, phase:session.phase, delegate:!!delegate, initiative: delegate?'ai':'self' }, auto ? { auto:true } : {})); renderStream(); }
+// (10-08) 버튼이 대신 보낸 말(활동판 '다 했어', 정리판 버튼, 막혔어요, 방법 확정)은 학습자가 쓴 질문이 아니라 원리12 질문 돌아보기 목록에서 뺀다.
+const AUTO_ME_RE = /^\(.+\)$|^다 했어\. 봐줄래\?$|^다시 고쳤어\. 이제 어때\?$|^지금 막혔어\. 어디서 막혔는지 같이 점검해줘\.$|^".+" 방법으로 해볼게\.$/;
+const isAutoMe = t => !!t.auto || AUTO_ME_RE.test(String(t.text||'').trim());
 function pushAi(text, kind, structOffer){ session.turns.push({ id:uid(), role:'ai', text, phase:session.phase, kind:kind||null, support:session.support, judge:null, comment:'', structOffer: structOffer||null }); renderStream(); }
 
 function renderStream(){
@@ -3730,7 +3744,7 @@ async function reviewStruct(tid){
   const d = describeStruct(t.structured);
   t.structured.reviewCount = (t.structured.reviewCount||0) + 1;
   const secondReview = t.structured.reviewCount >= 2;
-  pushMe(secondReview ? '다시 고쳤어. 이제 어때?' : '다 했어. 봐줄래?', false);
+  pushMe(secondReview ? '다시 고쳤어. 이제 어때?' : '다 했어. 봐줄래?', false, true);
   // (개선) 산출물도 과업 명세의 성공 기준에 비추어 진단한다(원리9). 명세가 없을 때만 예전 방식.
   const spec = session.currentTask;
   let ev = null;
@@ -3959,7 +3973,7 @@ function mmEditPopover(x, y, initial, onConfirm){
 async function requestStructured(type, label){
   if(busy || session.phase!=='explore' || !session.cycleStarted) return;
   busy = true; syncComposeLock();
-  pushMe(`(${label})`, false);
+  pushMe(`(${label})`, false, true);
   const box=$('#stream');
   box.insertAdjacentHTML('beforeend', `<div class="msg ai" id="pending"><div class="av">AI</div><div class="bubble"><span class="loading"><i></i><i></i><i></i></span></div></div>`);
   box.scrollTop = box.scrollHeight;
@@ -4895,7 +4909,7 @@ function syncReflectGate(){
     const rated = (session.reflect.promptRatings||[]).filter(r=>PROMPT_RATE_DIMS.every(d=>r[d.k]!=null));
     const anyMe = session.turns.some(t=>t.role==='me');
     if(anyMe && !(session.reflect.promptRatings||[]).length) miss.push('돌아볼 내 질문을 하나 이상 골라요');
-    else if(anyMe && !rated.length) miss.push('고른 질문에 점수 세 가지를 모두 매겨요');
+    else if(anyMe && rated.length < (session.reflect.promptRatings||[]).length) miss.push(`고른 질문마다 점수 세 가지를 모두 매겨요(남은 질문 ${(session.reflect.promptRatings||[]).length - rated.length}개)`);
     if((($('#in-reflect')||{}).value||'').trim().length < MIN_REFLECT) miss.push('돌아보며 적기를 한 문장 이상 적어요');
     $('#reflect-next-b').disabled = miss.length>0; $('#reflect-later').disabled = miss.length>0;
   }
@@ -4987,14 +5001,24 @@ function enterReflect(){
   // 나 단계: 학습자가 실제로 입력한 프롬프트만 순서대로 펼쳐 보여준다(원리12). [대화 이후
   // 성찰 지침] 1: "핵심적으로 성찰해볼 프롬프트를 학습자 스스로 고를 수 있게 한다" — 그냥
   // 읽기만 하던 목록을 눌러서 고를 수 있게 한다.
-  const prompts = session.turns.filter(t=>t.role==='me');
+  // (10-08) 고른 질문 아래에 바로 그 질문의 점수 칸을 펼친다. 예전엔 점수 카드가 목록 맨 아래에 따로 모여 있어
+  // 어느 질문의 점수인지 헷갈리고 "질문마다 점수를 매길 수 없다"는 말을 들었다. 버튼이 대신 보낸 말은 목록에서 뺀다.
+  const prompts = session.turns.filter(t=>t.role==='me' && !isAutoMe(t));
   const prList = session.reflect.promptRatings || (session.reflect.promptRatings = []);
-  const pickedIds = new Set(prList.map(r=>r.turnId));
+  const byId = new Map(prList.map(r=>[r.turnId, r]));
+  const doneOf = r => PROMPT_RATE_DIMS.filter(d=>r[d.k]!=null).length;
   $('#prompt-list').innerHTML = prompts.length
-    ? prompts.map((t,i)=>`<div class="box prompt-pick ${pickedIds.has(t.id) ? 'is-selected' : ''}" data-tid="${t.id}" style="padding:11px 14px;cursor:pointer"><div class="hint" style="margin-bottom:4px">#${i+1} · ${t.delegate?'AI에게 답을 맡긴 질문':'내가 생각한 질문'}${pickedIds.has(t.id) ? ' · 고른 질문' : ''}</div><div style="font-size:13.5px">${esc(t.text)}</div></div>`).join('')
-    : '<p class="hint">아직 입력한 질문이 없어요.</p>';
-  $('#prompt-rate-wrap').hidden = prList.length===0;
-  $('#prompt-rate-cards').innerHTML = prList.map(promptRateCardHTML).join('');
+    ? prompts.map((t,i)=>{ const r = byId.get(t.id), n = r ? doneOf(r) : 0;
+        return `<div class="box prompt-pick ${r ? 'is-selected' : ''}" data-tid="${t.id}">
+          <button type="button" class="pp-head" data-tid="${t.id}" aria-expanded="${!!r}">
+            <span class="hint pp-meta">#${i+1} · ${t.delegate?'AI에게 답을 맡긴 질문':'내가 생각한 질문'}${r ? ` · <b class="pp-state ${n===3?'done':''}">${n===3?'점수 다 매김 ✓':`점수 ${n}/3`}</b>` : ' · <span class="pp-cta">눌러서 고르고 점수 매기기</span>'}</span>
+            <span class="pp-text">${esc(t.text)}</span>
+          </button>
+          ${r ? `<div class="prompt-rate" data-tid="${t.id}">${PROMPT_RATE_DIMS.map(d=>promptRateRowHTML(t.id, d, r[d.k])).join('')}<button type="button" class="btn btn-sm btn-ghost prompt-unrate" data-tid="${t.id}">이 질문 빼기</button></div>` : ''}
+        </div>`; }).join('')
+    : '<p class="hint">아직 내가 직접 쓴 질문이 없어요.</p>';
+  $('#prompt-rate-wrap').hidden = true;
+  $('#prompt-rate-cards').innerHTML = '';
   $('#in-reflect').value = session.reflect.note || '';
   syncReflectGate();
 }
@@ -5413,7 +5437,7 @@ function init(){
     if(busy || session.phase!=='explore' || !session.cycleStarted) return;
     session.stuckCount++; session.holdStreak = 0; session.checkpointForceSoon = true;
     const others = STRATS.filter(s=>!(session.strategies||[]).includes(s.id)).slice(0,2).map(s=>`${s.emoji} ${s.label}(${s.theory})`).join(', ');
-    pushMe('지금 막혔어. 어디서 막혔는지 같이 점검해줘.', false);
+    pushMe('지금 막혔어. 어디서 막혔는지 같이 점검해줘.', false, true);
     ai(`학습자가 "막혔어요" 신호를 보냈다. (1) 어디서 이해가 끊겼는지 짚어 보는 질문 1개 (2) 지금 방법 대신 시도해볼 만한 다른 공부 방법으로 ${others||'다른 방법'} 중 하나를 구체적으로 제안(쉬운 말로 풀어서, 괄호 안 영어 이론명은 말하지 마). 최종 선택은 학습자가 위쪽 [방법 바꾸기]에서 직접 한다.`);
   });
   $('#stream').addEventListener('click', e=>{
@@ -5458,7 +5482,7 @@ function init(){
       } else {
         session.prepStep = 'reason';
         renderStream(); paintPhase();
-        pushMe(`"${session.strategyLabel}" 방법으로 해볼게.`, false);
+        pushMe(`"${session.strategyLabel}" 방법으로 해볼게.`, false, true);
         ai(`학습자가 공부 방법 "${session.strategyLabel}"을(를) 골랐다(${session.strategies.length}개를 함께 고름). 무엇을 배울지 질문하기 전에, "그 방법을(들을) 고른 이유가 뭐야?"라고만 쉬운 말로 딱 1가지 물어봐.`);
       }
       return;
@@ -5766,14 +5790,20 @@ function init(){
   // 요청사항(11번째 피드백) 6: 질문 하나만이 아니라, 유의미하다고 판단되는 프롬프트를 원하는
   // 만큼(복수) 골라 각각 구체성·논리성·명시성을 매길 수 있게 한다.
   $('#prompt-list').addEventListener('click', e=>{
-    const b = e.target.closest('.prompt-pick'); if(!b) return;
+    // (10-08) 질문 아래 펼쳐진 점수 칸: 점수 고르기·빼기
+    const chip = e.target.closest('.prompt-rate .u-chip');
+    if(chip){ const r = (session.reflect.promptRatings||[]).find(x=>x.turnId===chip.dataset.tid); if(r) r[chip.dataset.dim] = +chip.dataset.n; const y = window.scrollY; enterReflect(); window.scrollTo(0, y); return; }
+    const un = e.target.closest('.prompt-unrate');
+    if(un){ const list = session.reflect.promptRatings || []; const i = list.findIndex(r=>r.turnId===un.dataset.tid); if(i>=0) list.splice(i,1); const y = window.scrollY; enterReflect(); window.scrollTo(0, y); return; }
+    if(e.target.closest('.prompt-rate')) return;
+    const b = e.target.closest('.pp-head'); if(!b) return;
     const tid = b.dataset.tid;
     const t = session.turns.find(x=>x.id===tid); if(!t) return;
     const list = session.reflect.promptRatings || (session.reflect.promptRatings = []);
     const i = list.findIndex(r=>r.turnId===tid);
     if(i>=0) list.splice(i,1); // 다시 누르면 목록에서 뺀다
     else list.push({ turnId:tid, text:t.text, specificity:null, logic:null, clarity:null });
-    enterReflect();
+    { const y = window.scrollY; enterReflect(); window.scrollTo(0, y); }
   });
   $('#prompt-rate-cards').addEventListener('click', e=>{
     const un = e.target.closest('.prompt-unrate');
