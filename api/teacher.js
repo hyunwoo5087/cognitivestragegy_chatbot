@@ -169,6 +169,30 @@ export default async function handler(req, res) {
       sendJSON(req, res, 200, { students: all.map(a => ({ nickname: a.nickname, created: a.created, done: a.sessions.filter(s => !s.incomplete).length, incomplete: a.sessions.filter(s => s.incomplete).length + (a.draft ? 1 : 0), last: [...a.sessions.map(s => s.endedAt || s.startedAt), a.draft && a.draft.savedAt].filter(Boolean).sort().pop() || '' })) });
       return;
     }
+    // (10-08) 교사 화면 '학생 성장 보기': 고른 학생들의 끝낸 공부를 지표만 추린 짧은 형태로 보낸다(대화 원문 제외).
+    if (body.action === 'growth') {
+      const want = Array.isArray(body.nicknames) ? body.nicknames.map(String).filter(n => NICK_RE.test(n)).slice(0, 80) : [];
+      if (!want.length) { res.status(400).json({ error: '학생을 한 명 이상 골라 주세요.' }); return; }
+      const all = await loadAll(want);
+      const num = v => (typeof v === 'number' && isFinite(v) ? v : null);
+      const DIMS = ['specificity', 'logic', 'clarity'];
+      const compact = s => {
+        const pr = s.prior || {}, rs = s.residual || {}, md = (s.meta && s.meta.scoreDetail) || null;
+        const ai = (s.turns || []).filter(t => t.role === 'ai'), me = (s.turns || []).filter(t => t.role === 'me');
+        const rated = ((s.reflect && s.reflect.promptRatings) || []).filter(r => DIMS.every(d => typeof r[d] === 'number'));
+        const pavg = rated.length ? DIMS.reduce((o, d) => (o[d] = Math.round(rated.reduce((a, r) => a + r[d], 0) / rated.length * 10) / 10, o), {}) : null;
+        return {
+          date: String(s.startedAt || '').slice(0, 10), subject: (s.ctx && s.ctx.subject) || '', std: String((s.ctx && s.ctx.std) || '').slice(0, 60),
+          pre: num(pr.diagScore), post: num(rs.postScore),
+          metaV: (s.meta && s.meta.scoreVersion) || 'v1', meta: md ? { u: num(md.understand), s: num(md.strategy), c: num(md.connect) } : null,
+          prompt: pavg, strategy: s.strategyLabel || '',
+          reveal: ai.filter(t => /\[풀이 공개 턴\]/.test(t.instr || '')).length,
+          delegated: me.filter(t => t.delegate).length, msgs: me.length
+        };
+      };
+      sendJSON(req, res, 200, { students: all.map(a => ({ nickname: a.nickname, sessions: a.sessions.filter(x => !x.incomplete).sort((x, y) => String(x.startedAt).localeCompare(String(y.startedAt))).map(compact), incomplete: a.sessions.filter(x => x.incomplete).length })) });
+      return;
+    }
     if (body.action === 'export') {
       // (개선) 전체 대화가 담긴 JSON은 반 전체를 한 번에 보내면 Vercel 응답 한도(4.5MB)를 금방 넘는다
       // (세션 약 67KB → 반 전체 약 65회). 학생 몇 명씩 나눠 보내고 화면이 하나로 합친다(offset/limit).

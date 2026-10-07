@@ -22,7 +22,16 @@
   .slots{font-size:26px;letter-spacing:6px;min-height:34px}
   .hint{font-size:12.5px;color:var(--muted)}
   @media(max-width:600px){.pal{grid-template-columns:repeat(6,1fr)}}
+  .gw-table{font-size:12.5px} .gw-table td,.gw-table th{padding:6px 5px;white-space:nowrap} .gw-table tr.avg td{font-weight:700;background:#f6f7f8}
+  .gw-scroll{overflow-x:auto;margin:10px 0}
+  .gw-charts{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin-top:12px}
+  .gw-chart{border:1px solid var(--line);border-radius:10px;padding:12px}
+  .gw-chart h3{font-size:13.5px;margin:0 0 2px} .gw-chart .hint{margin:0 0 8px}
+  .gw-box{position:relative;height:240px;min-width:0}
+  .up{color:#0b6b3d} .down{color:var(--warn)}
+  td input[type=checkbox],th input[type=checkbox]{width:18px;height:18px}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 <main>
@@ -54,15 +63,31 @@
     <div class="msg" id="m1"></div>
   </div>
 
+  <!-- (10-08) 학생 성장 보기: 목록에서 고른 학생들의 지표를 통계표와 그래프로 -->
   <div class="card">
-    <h2>2. 데이터 내려받기</h2>
+    <h2>2. 학생 성장 보기</h2>
+    <div class="row"><button class="pri" id="btn-growth" disabled>고른 학생 성장 보기</button><span class="hint" id="gw-picked">위 목록에서 학생을 체크하세요(한 명 또는 여러 명).</span></div>
+    <div class="msg" id="m2"></div>
+    <div id="gw-out" hidden>
+      <div class="gw-scroll" tabindex="0" role="region" aria-label="학생 성장 통계표"><table class="gw-table" id="gw-table"></table></div>
+      <div class="row"><button id="btn-gw-csv">이 표 CSV로 내려받기</button><span class="hint">끝낸 공부만 셉니다. 스스로 점검은 10월 1일 이후 새 채점 기준 기록만, 질문 실력은 세 지표를 모두 매긴 질문만 씁니다.</span></div>
+      <div class="gw-charts">
+        <div class="gw-chart"><h3 id="gw-t1">공부 전 → 혼자 풀 때</h3><p class="hint" id="gw-s1"></p><div class="gw-box"><canvas id="gw-c1" role="img" aria-label="공부 전과 혼자 풀 때 점수"></canvas></div></div>
+        <div class="gw-chart"><h3 id="gw-t2">스스로 점검(이해·전략·연결)</h3><p class="hint" id="gw-s2"></p><div class="gw-box"><canvas id="gw-c2" role="img" aria-label="스스로 점검 세 지표"></canvas></div></div>
+        <div class="gw-chart"><h3 id="gw-t3">질문 실력(구체성·논리성·명시성, 1~5)</h3><p class="hint" id="gw-s3"></p><div class="gw-box"><canvas id="gw-c3" role="img" aria-label="질문 실력 세 지표"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. 데이터 내려받기</h2>
     <div class="row"><button id="btn-csv">세션 요약 CSV (엑셀용)</button><button id="btn-json">전체 원자료 JSON (대화 포함)</button></div>
     <div class="hint">CSV는 세션 1개가 한 줄(끝낸 공부 / 끝내지 않은 공부 / 진행 중)이며 사전·사후 점수, 메타인지 점수, 고른 방법, 진단 수준, 성찰 글 등을 담아요. JSON에는 대화 전체가 들어 있어요. 학생 이름 대신 닉네임만 저장돼요.</div>
     <div class="msg" id="m3"></div>
   </div>
 
   <div class="card">
-    <h2>3. 학생 그림 비밀번호 초기화</h2>
+    <h2>4. 학생 그림 비밀번호 초기화</h2>
     <div class="row"><input type="text" id="rnick" placeholder="학생 닉네임" /></div>
     <div class="hint" style="margin-top:8px">새 그림 4개를 순서대로 고르세요(학생에게 이 순서를 알려 주세요).</div>
     <div class="slots" id="slots">❔❔❔❔</div>
@@ -71,7 +96,7 @@
     <div class="msg" id="m4"></div>
   </div>
   <div class="card">
-    <h2>4. 내 계정과 선생님 계정</h2>
+    <h2>5. 내 계정과 선생님 계정</h2>
     <div class="hint" style="margin-bottom:6px">내 비밀번호 바꾸기 (바꾸면 다른 기기의 로그인은 풀려요)</div>
     <div class="row"><input type="password" id="pw-old" placeholder="지금 비밀번호" autocomplete="current-password" /><input type="password" id="pw-new" placeholder="새 비밀번호 (8자 이상, 글자+숫자)" autocomplete="new-password" /><button id="btn-pw">바꾸기</button></div>
     <div class="msg" id="m5"></div>
@@ -102,11 +127,92 @@ async function loadList() {
   $('#m1').textContent = '';
   try {
     const j = await call({ action:'list' });
-    $('#list').innerHTML = j.students.length ? `<div class="hint" style="margin-bottom:6px">학생 ${j.students.length}명</div><table><thead><tr><th>닉네임</th><th>가입</th><th>끝낸 공부</th><th>끝내지 않음/진행 중</th><th>마지막 활동</th></tr></thead><tbody>${
-      j.students.map(s => `<tr><td>${esc(s.nickname)}</td><td>${esc((s.created||'').slice(0,10))}</td><td>${s.done}</td><td>${s.incomplete}</td><td>${esc((s.last||'').replace('T',' ').slice(0,16))}</td></tr>`).join('')}</tbody></table>` : '아직 학생이 없어요.';
+    $('#list').innerHTML = j.students.length ? `<div class="hint" style="margin-bottom:6px">학생 ${j.students.length}명</div><table><thead><tr><th><input type="checkbox" id="pick-all" aria-label="모두 고르기"></th><th>닉네임</th><th>가입</th><th>끝낸 공부</th><th>끝내지 않음/진행 중</th><th>마지막 활동</th></tr></thead><tbody>${
+      j.students.map(s => `<tr><td><input type="checkbox" class="pick" value="${esc(s.nickname)}" aria-label="${esc(s.nickname)} 고르기"></td><td>${esc(s.nickname)}</td><td>${esc((s.created||'').slice(0,10))}</td><td>${s.done}</td><td>${s.incomplete}</td><td>${esc((s.last||'').replace('T',' ').slice(0,16))}</td></tr>`).join('')}</tbody></table>` : '아직 학생이 없어요.';
+    if (typeof syncPicked === 'function') syncPicked();
   } catch (e) { msg('#m1', e.message); }
 }
 $('#btn-list').onclick = loadList;
+// ---- (10-08) 학생 성장 보기 ----
+const picked = () => [...document.querySelectorAll('.pick:checked')].map(c => c.value);
+function syncPicked(){ const n = picked().length; $('#btn-growth').disabled = !n; $('#btn-growth').textContent = n ? `고른 학생 ${n}명 성장 보기` : '고른 학생 성장 보기'; }
+$('#list').addEventListener('change', e => {
+  if (e.target.id === 'pick-all') document.querySelectorAll('.pick').forEach(c => c.checked = e.target.checked);
+  syncPicked();
+});
+const mean = a => { const v = a.filter(x => typeof x === 'number'); return v.length ? Math.round(v.reduce((p, c) => p + c, 0) / v.length * 10) / 10 : null; };
+const fmt = v => v == null ? '-' : String(v);
+const sgn = v => v == null ? '-' : `<span class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${v > 0 ? '+' : ''}${v}</span>`;
+let GW = null, gwCharts = [];
+function summarize(st) {
+  const S = st.sessions, both = S.filter(x => x.pre != null && x.post != null);
+  const mv = S.filter(x => x.meta && x.metaV === 'v2-subind'), f = mv[0], l = mv[mv.length - 1];
+  const pr = S.filter(x => x.prompt);
+  const cnt = {}; S.forEach(x => String(x.strategy || '').split(/\s*\+\s*/).filter(Boolean).forEach(k => cnt[k] = (cnt[k] || 0) + 1));
+  const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+  return { name: st.nickname, n: S.length, inc: st.incomplete, pre: mean(both.map(x => x.pre)), post: mean(both.map(x => x.post)), nboth: both.length,
+    delta: both.length ? mean(both.map(x => x.post - x.pre)) : null,
+    mFirst: f ? f.meta : null, mLast: l ? l.meta : null, nmeta: mv.length,
+    p: pr.length ? { s: mean(pr.map(x => x.prompt.specificity)), l: mean(pr.map(x => x.prompt.logic)), c: mean(pr.map(x => x.prompt.clarity)) } : null,
+    top: top ? `${top[0]}(${top[1]})` : '-', reveal: S.reduce((a, x) => a + x.reveal, 0), delegated: S.reduce((a, x) => a + x.delegated, 0) };
+}
+const COLS = [['학생','name'],['끝낸 공부','n'],['공부 전 평균','pre'],['혼자 풀 때 평균','post'],['평균 변화','delta'],['이해 처음→최근','mu'],['전략 처음→최근','ms'],['연결 처음→최근','mc'],['구체성','ps'],['논리성','pl'],['명시성','pc'],['많이 쓴 방법','top'],['풀이 공개','reveal'],['AI에게 맡긴 말','delegated']];
+function cells(r) {
+  const ar = (k) => r.mFirst && r.mLast ? `${fmt(r.mFirst[k])}→${fmt(r.mLast[k])}` : '-';
+  return { name: r.name, n: r.n + (r.inc ? ` (+미완 ${r.inc})` : ''), pre: fmt(r.pre), post: fmt(r.post), delta: r.delta, mu: ar('u'), ms: ar('s'), mc: ar('c'),
+    ps: fmt(r.p && r.p.s), pl: fmt(r.p && r.p.l), pc: fmt(r.p && r.p.c), top: r.top, reveal: r.reveal, delegated: r.delegated };
+}
+function renderGrowth() {
+  const rows = GW.students.map(summarize);
+  const avg = { name: `고른 학생 평균(${rows.length}명)`, n: mean(rows.map(r => r.n)), inc: 0, pre: mean(rows.map(r => r.pre)), post: mean(rows.map(r => r.post)), delta: mean(rows.map(r => r.delta)),
+    mFirst: null, mLast: null, p: { s: mean(rows.map(r => r.p && r.p.s)), l: mean(rows.map(r => r.p && r.p.l)), c: mean(rows.map(r => r.p && r.p.c)) }, top: '', reveal: mean(rows.map(r => r.reveal)), delegated: mean(rows.map(r => r.delegated)) };
+  const avgMeta = k => { const a = mean(rows.map(r => r.mFirst && r.mFirst[k])), b = mean(rows.map(r => r.mLast && r.mLast[k])); return a == null ? '-' : `${a}→${b}`; };
+  const head = `<thead><tr>${COLS.map(c => `<th>${c[0]}</th>`).join('')}</tr></thead>`;
+  const body = rows.map(r => { const c = cells(r); return `<tr>${COLS.map(([, k]) => `<td>${k === 'delta' ? sgn(c[k]) : esc(String(c[k]))}</td>`).join('')}</tr>`; }).join('');
+  const ac = cells(avg); ac.mu = avgMeta('u'); ac.ms = avgMeta('s'); ac.mc = avgMeta('c'); ac.n = fmt(avg.n);
+  $('#gw-table').innerHTML = head + `<tbody>${body}${rows.length > 1 ? `<tr class="avg">${COLS.map(([, k]) => `<td>${k === 'delta' ? sgn(ac[k]) : esc(String(ac[k] ?? '-'))}</td>`).join('')}</tr>` : ''}</tbody>`;
+  GW.table = [COLS.map(c => c[0])].concat(rows.map(r => { const c = cells(r); return COLS.map(([, k]) => c[k]); }));
+  drawCharts(rows);
+  $('#gw-out').hidden = false;
+}
+const C_PRE = '#94a3b8', C_POST = '#12a05f', C3 = ['#3182f6', '#f59e0b', '#12a05f'], P3 = ['#8b5cf6', '#12a05f', '#f59e0b'];
+function chart(id, cfg) { const c = new Chart($(id), cfg); gwCharts.push(c); return c; }
+function drawCharts(rows) {
+  gwCharts.forEach(c => c.destroy()); gwCharts = [];
+  if (typeof Chart === 'undefined') { $('#gw-s1').textContent = '그래프 도구를 불러오지 못했어요(인터넷 연결 확인). 표는 그대로 볼 수 있어요.'; return; }
+  const base = (min, max, step) => ({ responsive: true, maintainAspectRatio: false, scales: { y: { min, max, ticks: { stepSize: step } } }, plugins: { legend: { position: 'bottom' } } });
+  if (GW.students.length === 1) {
+    const S = GW.students[0].sessions, lab = S.map((x, i) => [`${i + 1}회`, x.subject]);
+    $('#gw-t1').textContent = '회차별 공부 전 → 혼자 풀 때'; $('#gw-s1').textContent = `${GW.students[0].nickname} · 끝낸 공부 ${S.length}번`;
+    chart('#gw-c1', { type: 'line', data: { labels: lab, datasets: [{ label: '공부 전(사전 진단)', data: S.map(x => x.pre), borderColor: C_PRE, backgroundColor: C_PRE, borderDash: [5, 4], spanGaps: true }, { label: '혼자 풀 때(사후 진단)', data: S.map(x => x.post), borderColor: C_POST, backgroundColor: C_POST, borderWidth: 3, spanGaps: true }] }, options: base(0, 100, 25) });
+    const M = S.filter(x => x.meta && x.metaV === 'v2-subind');
+    $('#gw-t2').textContent = '회차별 스스로 점검'; $('#gw-s2').textContent = M.length ? `새 채점 기준 기록 ${M.length}번` : '새 채점 기준 기록이 아직 없어요.';
+    chart('#gw-c2', { type: 'line', data: { labels: M.map((x, i) => `${i + 1}회`), datasets: [['이해', 'u'], ['전략', 's'], ['연결', 'c']].map(([n, k], i) => ({ label: n, data: M.map(x => x.meta[k]), borderColor: C3[i], backgroundColor: C3[i], borderWidth: [4, 3, 2][i], borderDash: [[], [6, 4], [2, 3]][i], order: [3, 2, 1][i] })) }, options: base(0, 100, 25) });
+    const P = S.filter(x => x.prompt);
+    $('#gw-t3').textContent = '회차별 질문 실력'; $('#gw-s3').textContent = P.length ? `점수를 매긴 공부 ${P.length}번` : '아직 점수를 매긴 질문이 없어요.';
+    chart('#gw-c3', { type: 'line', data: { labels: P.map((x, i) => `${i + 1}회`), datasets: [['구체성', 'specificity'], ['논리성', 'logic'], ['명시성', 'clarity']].map(([n, k], i) => ({ label: n, data: P.map(x => x.prompt[k]), borderColor: P3[i], backgroundColor: P3[i], borderWidth: [4, 3, 2][i], borderDash: [[], [6, 4], [2, 3]][i], order: [3, 2, 1][i] })) }, options: base(1, 5, 1) });
+  } else {
+    const names = rows.map(r => r.name);
+    $('#gw-t1').textContent = '학생별 공부 전 → 혼자 풀 때 평균'; $('#gw-s1').textContent = '공부 전·혼자 풀 때 점수가 모두 있는 공부만 평균했어요.';
+    chart('#gw-c1', { type: 'bar', data: { labels: names, datasets: [{ label: '공부 전 평균', data: rows.map(r => r.pre), backgroundColor: C_PRE }, { label: '혼자 풀 때 평균', data: rows.map(r => r.post), backgroundColor: C_POST }] }, options: base(0, 100, 25) });
+    $('#gw-t2').textContent = '학생별 스스로 점검(가장 최근)'; $('#gw-s2').textContent = '새 채점 기준 기록 중 가장 최근 공부의 점수예요.';
+    chart('#gw-c2', { type: 'bar', data: { labels: names, datasets: [['이해', 'u'], ['전략', 's'], ['연결', 'c']].map(([n, k], i) => ({ label: n, data: rows.map(r => r.mLast ? r.mLast[k] : null), backgroundColor: C3[i] })) }, options: base(0, 100, 25) });
+    $('#gw-t3').textContent = '학생별 질문 실력 평균'; $('#gw-s3').textContent = '세 지표를 모두 매긴 질문의 평균이에요(1~5).';
+    chart('#gw-c3', { type: 'bar', data: { labels: names, datasets: [['구체성', 's'], ['논리성', 'l'], ['명시성', 'c']].map(([n, k], i) => ({ label: n, data: rows.map(r => r.p ? r.p[k] : null), backgroundColor: P3[i] })) }, options: base(0, 5, 1) });
+  }
+}
+$('#btn-growth').onclick = async () => {
+  const names = picked(); if (!names.length) return;
+  $('#m2').textContent = '불러오는 중…'; $('#m2').className = 'msg';
+  try { GW = await call({ action: 'growth', nicknames: names }); $('#m2').textContent = ''; renderGrowth(); $('#gw-out').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  catch (e) { msg('#m2', e.message); }
+};
+$('#btn-gw-csv').onclick = () => {
+  if (!GW || !GW.table) return;
+  const q = v => { const t = v == null ? '' : String(v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+  const csv = '﻿' + GW.table.map(r => r.map(q).join(',')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `metacog-growth-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+};
 async function loadTeachers() {
   try {
     const j = await call({ action:'t_list' });
